@@ -54,6 +54,8 @@ Após trocar a senha no primeiro acesso, substitua o valor temporário do arquiv
 
 ## 4. HTTPS e atualizações
 
-O frontend fica vinculado por padrão a `127.0.0.1:8080`. Configure um proxy reverso HTTPS, como Caddy ou Nginx, para encaminhar seu domínio a essa porta. Não publique a porta do PostgreSQL na internet.
+Por padrão, o frontend fica vinculado apenas a `127.0.0.1`, então só aceita conexões feitas no próprio servidor. Para acessá-lo de outros dispositivos da rede local, descubra o IP LAN do servidor com `ip -4 addr`, defina esse endereço em `WEB_BIND_ADDRESS` no `.env.production` e mantenha a porta indicada em `WEB_PORT`. Recrie o frontend com `sudo docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate frontend`. Acesse `http://IP-LAN-DO-SERVIDOR:PORTA`.
+
+Para acesso pela internet, configure um proxy reverso HTTPS, como Caddy ou Nginx. Não publique a porta do PostgreSQL na internet.
 
 Para atualizar, mantenha `.env.production`, os arquivos de `secrets/` e os volumes; depois execute novamente o comando `up -d --build`. Faça backups regulares do PostgreSQL e do volume `article_uploads`. Os arquivos em `secrets/` ficam no host e devem ser protegidos também nos backups.
