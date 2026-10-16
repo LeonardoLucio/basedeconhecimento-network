@@ -43,6 +43,9 @@
                         <input id="user-password" class="form-control" type="password"
                             v-model="user.password" :required="!user.id"
                             placeholder="Informe a Senha do Usuário..." />
+                        <small v-if="!user.id" class="form-text text-muted">
+                            Senha temporária: o usuário deverá criar uma senha pessoal no primeiro acesso.
+                        </small>
                     </div>
                 </div>
                 <div class="col-12 col-md-6">
