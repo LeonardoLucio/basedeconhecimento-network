@@ -1,13 +1,10 @@
 const app = require('express')()
 const consign = require('consign')
 const db = require('./config/db')
-const mongoose = require('mongoose')
-const connectMongo = require('./config/mongodb')
 const bcrypt = require('bcryptjs')
 const environment = require('./config/environment')
 
 app.db = db
-app.mongoose = mongoose
 
 consign()
     .include('./config/passport.js')
@@ -20,7 +17,6 @@ consign()
 const start = async () => {
     await db.migrate.latest()
     await ensureBootstrapAdmin()
-    await connectMongo()
     require('./schedule/statsSchedule')(app)
     app.listen(4000, () => {
         console.log('Backend executando...')
@@ -56,6 +52,5 @@ const ensureBootstrapAdmin = async () => {
 
 start().catch(error => {
     console.error('Não foi possível iniciar o backend ou conectar aos bancos:', error)
-    Promise.allSettled([db.destroy(), mongoose.disconnect()])
-        .finally(() => process.exit(1))
+    db.destroy().finally(() => process.exit(1))
 })

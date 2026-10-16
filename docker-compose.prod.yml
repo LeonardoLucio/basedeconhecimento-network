@@ -16,17 +16,6 @@ services:
       timeout: 5s
       retries: 15
 
-  mongodb:
-    image: mongo:8.0
-    restart: unless-stopped
-    volumes:
-      - mongodb_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-
   backend:
     build:
       context: ./backend
@@ -39,7 +28,6 @@ services:
       DB_NAME: knowledge
       DB_USER: knowledge
       DB_PASSWORD_FILE: /run/secrets/postgres_password
-      MONGODB_URI: mongodb://mongodb:27017/knowledge_stats
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Admin}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:?Set BOOTSTRAP_ADMIN_EMAIL in .env.production}
       BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/bootstrap_admin_password
@@ -51,8 +39,6 @@ services:
       - article_uploads:/app/uploads
     depends_on:
       postgres:
-        condition: service_healthy
-      mongodb:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -81,5 +67,4 @@ secrets:
 
 volumes:
   postgres_data:
-  mongodb_data:
   article_uploads:

@@ -23,7 +23,6 @@ const config = {
         user: process.env.DB_USER || fileConfig.db.user,
         password: readSetting('DB_PASSWORD') || fileConfig.db.password
     },
-    mongodbUri: process.env.MONGODB_URI || fileConfig.mongodbUri,
     bootstrapAdminName: process.env.BOOTSTRAP_ADMIN_NAME || 'Admin',
     bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || '',
     bootstrapAdminPassword: readSetting('BOOTSTRAP_ADMIN_PASSWORD') || ''
@@ -34,8 +33,6 @@ if (!config.authSecret || !config.db || !config.db.database || !config.db.user) 
         'Configure authSecret e os dados do PostgreSQL em backend/.env (use env_file como modelo).'
     )
 }
-
-config.mongodbUri = config.mongodbUri || 'mongodb://127.0.0.1:27017/knowledge_stats'
 
 if (process.env.NODE_ENV === 'production' && config.authSecret.length < 32) {
     throw new Error('AUTH_SECRET deve ter pelo menos 32 caracteres em produção.')

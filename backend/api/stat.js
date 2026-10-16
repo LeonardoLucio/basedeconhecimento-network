@@ -1,22 +1,17 @@
 module.exports = app => {
-    const Stat = app.mongoose.model('Stat', {
-        users: Number,
-        categories: Number,
-        articles: Number,
-        createdAt: Date
-    })
+    const get = async (_req, res) => {
+        try {
+            const stat = await app.db('stats')
+                .select('users', 'categories', 'articles', 'createdAt')
+                .orderBy('createdAt', 'desc')
+                .first()
 
-    const get = (req, res) => {
-        Stat.findOne({}, {}, { sort: { 'createdAt' : -1 } })
-            .then(stat => {
-                const defaultStat = {
-                    users: 0,
-                    categories: 0,
-                    articles: 0
-                }
-                res.json(stat || defaultStat)
-            })
+            return res.json(stat || { users: 0, categories: 0, articles: 0 })
+        } catch (error) {
+            console.error('[Stats] Failed to load statistics:', error)
+            return res.status(500).send('Could not load statistics.')
+        }
     }
 
-    return { Stat, get }
+    return { get }
 }

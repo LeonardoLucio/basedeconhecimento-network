@@ -1,21 +1,17 @@
-# Implantação em servidor com Docker Compose
+# Implantação no Linux com Docker Compose
 
-Esta implantação atende um único servidor: o frontend é publicado pelo Nginx e encaminha `/api` ao backend; PostgreSQL e MongoDB ficam apenas na rede interna do Compose. Artigos, uploads e bancos usam volumes persistentes.
+O Compose executa o frontend, o backend e o PostgreSQL. As estatísticas também são guardadas no PostgreSQL, então o servidor não precisa executar MongoDB. Artigos, uploads e dados do banco ficam em volumes persistentes.
 
-## 1. Baixar o projeto no servidor
+## 1. Baixar o projeto
 
-Clone o repositório e entre na pasta criada:
-
-`sh
+```sh
 git clone https://github.com/LeonardoLucio/basedeconhecimento-network.git
 cd basedeconhecimento-network
-`
+```
 
-Os comandos abaixo devem ser executados na raiz dessa pasta.
+Execute os comandos seguintes na raiz do projeto clonado.
 
-## 2. Criar segredos no servidor
-
-Na pasta `versao-final`, crie arquivos de segredo fora do controle de versão:
+## 2. Criar os segredos
 
 ```sh
 mkdir -p secrets
@@ -28,28 +24,36 @@ sudo chmod 700 secrets
 sudo chmod 600 secrets/*.txt
 ```
 
-Copie `.env.production.example` para `.env.production`, restrinja o arquivo e informe o e-mail que será usado no login:
+Copie o modelo de configuração e informe o e-mail que será usado no primeiro acesso:
 
 ```sh
 cp .env.production.example .env.production
 chmod 600 .env.production
+nano .env.production
 ```
 
-Edite `BOOTSTRAP_ADMIN_EMAIL`. O nome inicial é `Admin`. A senha temporária vem de `secrets/bootstrap_admin_password.txt`; não há uma senha padrão `Admin/Admin` no código.
+O nome inicial da conta é `Admin`. A senha temporária está em `secrets/bootstrap_admin_password.txt`; não existe uma senha padrão `Admin/Admin`. A senha temporária deve ter pelo menos 16 caracteres. No primeiro acesso, o sistema exige uma nova senha pessoal com pelo menos 12 caracteres.
 
-## 3. Subir a aplicação
+## 3. Iniciar a aplicação
 
 ```sh
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-docker compose --env-file .env.production -f docker-compose.prod.yml logs -f backend
+sudo docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build --remove-orphans
+sudo docker compose --env-file .env.production -f docker-compose.prod.yml ps
+sudo docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=100 backend
 ```
 
-O primeiro administrador é criado somente quando o banco ainda não contém um administrador. A senha temporária precisa ter pelo menos 16 caracteres e a aplicação exige uma nova senha pessoal, com pelo menos 12 caracteres, no primeiro acesso. Entre usando o e-mail configurado e a senha temporária. Após a troca, substitua o conteúdo do arquivo de senha temporária por outro valor aleatório e recrie o backend; isso remove a senha inicial do segredo montado sem alterar a conta já criada.
+`--remove-orphans` remove containers de versões anteriores do Compose, como o MongoDB usado em versões antigas desta aplicação. Ele não apaga volumes. Não use `docker compose down -v` em produção.
+
+Para consultar a senha temporária:
+
+```sh
+sudo cat secrets/bootstrap_admin_password.txt
+```
+
+Após trocar a senha no primeiro acesso, substitua o valor temporário do arquivo por outro valor aleatório. Isso remove a senha inicial do segredo montado sem alterar a conta já criada.
 
 ## 4. HTTPS e atualizações
 
-O frontend fica vinculado por padrão a `127.0.0.1:8080`. Configure um proxy reverso HTTPS no servidor (por exemplo, Caddy ou Nginx) para encaminhar o domínio a essa porta. Não publique as portas do PostgreSQL ou do MongoDB na internet.
+O frontend fica vinculado por padrão a `127.0.0.1:8080`. Configure um proxy reverso HTTPS, como Caddy ou Nginx, para encaminhar seu domínio a essa porta. Não publique a porta do PostgreSQL na internet.
 
-Para atualizar, mantenha `.env.production`, os arquivos de `secrets/` e os volumes; depois execute novamente o comando `up -d --build`. **Não use `docker compose down -v` em produção**, pois a opção `-v` remove os volumes com o banco e os uploads. Mantenha backups do PostgreSQL e do volume `article_uploads`; o MongoDB guarda as estatísticas históricas.
-
-Os arquivos em `secrets/` são montados em somente leitura nos containers, mas continuam armazenados no host. Restrinja permissões e backups deles. Para um único servidor, Compose é suficiente; Kubernetes só passa a fazer sentido com múltiplos nós, alta disponibilidade ou uma plataforma de orquestração existente.
+Para atualizar, mantenha `.env.production`, os arquivos de `secrets/` e os volumes; depois execute novamente o comando `up -d --build`. Faça backups regulares do PostgreSQL e do volume `article_uploads`. Os arquivos em `secrets/` ficam no host e devem ser protegidos também nos backups.

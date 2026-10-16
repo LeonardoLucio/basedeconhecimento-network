@@ -6,6 +6,5 @@ module.exports = {
         database: 'knowledge',
         user: 'knowledge',
         password: 'knowledge_dev'
-    },
-    mongodbUri: 'mongodb://127.0.0.1:27017/knowledge_stats'
+    }
 }
