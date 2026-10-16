@@ -2,7 +2,18 @@
 
 Esta implantação atende um único servidor: o frontend é publicado pelo Nginx e encaminha `/api` ao backend; PostgreSQL e MongoDB ficam apenas na rede interna do Compose. Artigos, uploads e bancos usam volumes persistentes.
 
-## 1. Criar segredos no servidor
+## 1. Baixar o projeto no servidor
+
+Clone o repositório e entre na pasta criada:
+
+`sh
+git clone https://github.com/LeonardoLucio/basedeconhecimento-network.git
+cd basedeconhecimento-network
+`
+
+Os comandos abaixo devem ser executados na raiz dessa pasta.
+
+## 2. Criar segredos no servidor
 
 Na pasta `versao-final`, crie arquivos de segredo fora do controle de versão:
 
@@ -25,7 +36,7 @@ chmod 600 .env.production
 
 Edite `BOOTSTRAP_ADMIN_EMAIL`. O nome inicial é `Admin`. A senha temporária vem de `secrets/bootstrap_admin_password.txt`; não há uma senha padrão `Admin/Admin` no código.
 
-## 2. Subir a aplicação
+## 3. Subir a aplicação
 
 ```sh
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
@@ -34,7 +45,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml logs -f bac
 
 O primeiro administrador é criado somente quando o banco ainda não contém um administrador. A senha temporária precisa ter pelo menos 16 caracteres e a aplicação exige uma nova senha pessoal, com pelo menos 12 caracteres, no primeiro acesso. Entre usando o e-mail configurado e a senha temporária. Após a troca, substitua o conteúdo do arquivo de senha temporária por outro valor aleatório e recrie o backend; isso remove a senha inicial do segredo montado sem alterar a conta já criada.
 
-## 3. HTTPS e atualizações
+## 4. HTTPS e atualizações
 
 O frontend fica vinculado por padrão a `127.0.0.1:8080`. Configure um proxy reverso HTTPS no servidor (por exemplo, Caddy ou Nginx) para encaminhar o domínio a essa porta. Não publique as portas do PostgreSQL ou do MongoDB na internet.
 
