@@ -1,0 +1,33 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "vite",
+    "build": "vite build",
+    "lint": "eslint src --ext .js,.vue"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.58.0",
+    "@vueup/vue-quill": "^1.5.5",
+    "axios": "^1.12.2",
+    "bootstrap": "^5.3.8",
+    "highlight.js": "^11.12.0",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.44",
+    "vue-router": "^4.5.1",
+    "vue3-toastify": "^0.2.9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "eslint": "^10.13.0",
+    "eslint-plugin-vue": "^10.11.1",
+    "globals": "^17.13.0",
+    "vite": "^7.1.7"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
