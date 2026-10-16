@@ -24,7 +24,8 @@ openssl rand -hex 32 > secrets/auth_secret.txt
 openssl rand -hex 32 > secrets/postgres_password.txt
 openssl rand -hex 18 > secrets/bootstrap_admin_password.txt
 sudo chown -R 1000:1000 secrets
-chmod 600 secrets/*.txt
+sudo chmod 700 secrets
+sudo chmod 600 secrets/*.txt
 ```
 
 Copie `.env.production.example` para `.env.production`, restrinja o arquivo e informe o e-mail que será usado no login:
