@@ -52,6 +52,37 @@ const getImageExtension = buffer => {
 const readAttribute = (attributes, localName) =>
     Object.values(attributes).find(attribute => attribute.local === localName)?.value
 
+const formatListNumber = (value, format) => {
+    if (format === 'decimalZero') return String(value).padStart(2, '0')
+    if (format === 'upperRoman' || format === 'lowerRoman') {
+        const numerals = [
+            [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'],
+            [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'],
+            [5, 'V'], [4, 'IV'], [1, 'I']
+        ]
+        let remainder = value
+        let result = ''
+        for (const [amount, numeral] of numerals) {
+            while (remainder >= amount) {
+                result += numeral
+                remainder -= amount
+            }
+        }
+        return format === 'lowerRoman' ? result.toLowerCase() : result
+    }
+    if (format === 'upperLetter' || format === 'lowerLetter') {
+        let remainder = value
+        let result = ''
+        while (remainder > 0) {
+            remainder--
+            result = String.fromCharCode(65 + (remainder % 26)) + result
+            remainder = Math.floor(remainder / 26)
+        }
+        return format === 'lowerLetter' ? result.toLowerCase() : result
+    }
+    return String(value)
+}
+
 const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) => {
     const relationships = new Map()
     const relationshipParser = new SaxesParser({ xmlns: true })
@@ -64,24 +95,68 @@ const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) =>
     })
     relationshipParser.write(relationshipsXml || '<Relationships/>').close()
 
-    const abstractFormats = new Map()
-    const numberingFormats = new Map()
+    const abstractNumbering = new Map()
+    const numberingInstances = new Map()
     let abstractId = null
     let numberingId = null
+    let abstractLevel = null
+    let overrideLevel = null
     if (numberingXml) {
         const numberingParser = new SaxesParser({ xmlns: true })
         numberingParser.on('opentag', tag => {
-            if (tag.local === 'abstractNum') abstractId = readAttribute(tag.attributes, 'abstractNumId')
-            if (tag.local === 'num') numberingId = readAttribute(tag.attributes, 'numId')
-            if (tag.local === 'numFmt' && abstractId) {
-                abstractFormats.set(abstractId, readAttribute(tag.attributes, 'val'))
+            if (tag.local === 'abstractNum') {
+                abstractId = readAttribute(tag.attributes, 'abstractNumId')
+                abstractNumbering.set(abstractId, new Map())
+            }
+            if (tag.local === 'num') {
+                numberingId = readAttribute(tag.attributes, 'numId')
+                numberingInstances.set(numberingId, { levels: new Map() })
             }
             if (tag.local === 'abstractNumId' && numberingId) {
-                const referencedId = readAttribute(tag.attributes, 'val')
-                numberingFormats.set(numberingId, abstractFormats.get(referencedId))
+                numberingInstances.get(numberingId).abstractId = readAttribute(tag.attributes, 'val')
+            }
+            if (tag.local === 'lvl' && abstractId) {
+                abstractLevel = Number(readAttribute(tag.attributes, 'ilvl') || 0)
+                abstractNumbering.get(abstractId).set(abstractLevel, { start: 1 })
+            } else if (tag.local === 'lvl' && numberingId && overrideLevel !== null) {
+                const override = numberingInstances.get(numberingId).levels.get(overrideLevel)
+                override.level = Number(readAttribute(tag.attributes, 'ilvl') || overrideLevel)
+            }
+            if (tag.local === 'lvlOverride' && numberingId) {
+                overrideLevel = Number(readAttribute(tag.attributes, 'ilvl') || 0)
+                numberingInstances.get(numberingId).levels.set(overrideLevel, {})
+            }
+            if (tag.local === 'startOverride' && numberingId && overrideLevel !== null) {
+                numberingInstances.get(numberingId).levels.get(overrideLevel).start =
+                    Number(readAttribute(tag.attributes, 'val')) || 1
+            }
+            if (tag.local === 'start' && abstractId && abstractLevel !== null) {
+                abstractNumbering.get(abstractId).get(abstractLevel).start =
+                    Number(readAttribute(tag.attributes, 'val')) || 1
+            } else if (tag.local === 'start' && numberingId && overrideLevel !== null) {
+                numberingInstances.get(numberingId).levels.get(overrideLevel).start =
+                    Number(readAttribute(tag.attributes, 'val')) || 1
+            }
+            if (tag.local === 'numFmt') {
+                const format = readAttribute(tag.attributes, 'val')
+                if (abstractId && abstractLevel !== null) {
+                    abstractNumbering.get(abstractId).get(abstractLevel).format = format
+                } else if (numberingId && overrideLevel !== null) {
+                    numberingInstances.get(numberingId).levels.get(overrideLevel).format = format
+                }
+            }
+            if (tag.local === 'lvlText') {
+                const value = readAttribute(tag.attributes, 'val')
+                if (abstractId && abstractLevel !== null) {
+                    abstractNumbering.get(abstractId).get(abstractLevel).text = value
+                } else if (numberingId && overrideLevel !== null) {
+                    numberingInstances.get(numberingId).levels.get(overrideLevel).text = value
+                }
             }
         })
         numberingParser.on('closetag', tag => {
+            if (tag.local === 'lvl' && abstractId) abstractLevel = null
+            if (tag.local === 'lvlOverride') overrideLevel = null
             if (tag.local === 'abstractNum') abstractId = null
             if (tag.local === 'num') numberingId = null
         })
@@ -96,6 +171,7 @@ const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) =>
     let paragraphStyle = ''
     let numberedParagraph = false
     let paragraphNumberId = null
+    let paragraphNumberLevel = 0
     let bold = false
     let italic = false
     let underline = false
@@ -106,11 +182,14 @@ const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) =>
             paragraphStyle = ''
             numberedParagraph = false
             paragraphNumberId = null
+            paragraphNumberLevel = 0
         } else if (currentParagraph !== null && tag.local === 'pStyle') {
             paragraphStyle = readAttribute(tag.attributes, 'val') || ''
         } else if (currentParagraph !== null && tag.local === 'numId') {
             paragraphNumberId = readAttribute(tag.attributes, 'val')
             numberedParagraph = paragraphNumberId !== '0'
+        } else if (currentParagraph !== null && tag.local === 'ilvl') {
+            paragraphNumberLevel = Number(readAttribute(tag.attributes, 'val')) || 0
         } else if (currentParagraph !== null && tag.local === 'b') {
             bold = readAttribute(tag.attributes, 'val') !== '0' && readAttribute(tag.attributes, 'val') !== 'false'
         } else if (currentParagraph !== null && tag.local === 'i') {
@@ -149,12 +228,22 @@ const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) =>
     parser.on('closetag', tag => {
         if (tag.local === 't') readingText = false
         if (tag.local === 'p' && currentParagraph !== null) {
-            const format = numberingFormats.get(paragraphNumberId)
+            const numbering = numberingInstances.get(paragraphNumberId)
+            const abstractLevels = abstractNumbering.get(numbering?.abstractId)
+            const level = {
+                ...(abstractLevels?.get(paragraphNumberLevel) || {}),
+                ...(numbering?.levels.get(paragraphNumberLevel) || {})
+            }
             paragraphs.push({
                 html: currentParagraph,
                 style: paragraphStyle,
                 numbered: numberedParagraph,
-                listType: format === 'bullet' ? 'ul' : 'ol'
+                numberingId: paragraphNumberId,
+                numberingLevel: paragraphNumberLevel,
+                numberingFormat: level.format || 'decimal',
+                numberingText: level.text || `%${paragraphNumberLevel + 1}.`,
+                numberingStart: level.start || 1,
+                listType: level.format === 'bullet' ? 'ul' : 'ol'
             })
             currentParagraph = null
         } else if (tag.local === 'r') {
@@ -186,6 +275,30 @@ const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) =>
         imageIndexes.set(markerIndex, images.length)
         images.push({ data, extension })
     }
+    const numberingCounters = new Map()
+    for (const paragraph of paragraphs) {
+        if (!paragraph.numbered || paragraph.listType !== 'ol') continue
+        let counters = numberingCounters.get(paragraph.numberingId)
+        if (!counters) {
+            counters = []
+            numberingCounters.set(paragraph.numberingId, counters)
+        }
+        const level = paragraph.numberingLevel
+        counters.length = level + 1
+        counters[level] = counters[level] === undefined
+            ? paragraph.numberingStart
+            : counters[level] + 1
+        const numbering = numberingInstances.get(paragraph.numberingId)
+        const abstractLevels = abstractNumbering.get(numbering?.abstractId)
+        paragraph.numberLabel = paragraph.numberingText.replace(/%([1-9])/g, (_, index) => {
+            const referencedLevel = Number(index) - 1
+            const referencedCount = counters[referencedLevel] || 1
+            const referencedFormat = numbering?.levels.get(referencedLevel)?.format ||
+                abstractLevels?.get(referencedLevel)?.format || 'decimal'
+            return formatListNumber(referencedCount, referencedFormat)
+        })
+    }
+
     let html = ''
     let listType = null
     for (const paragraph of paragraphs) {
@@ -193,16 +306,23 @@ const parseDocxContent = (documentXml, relationshipsXml, numberingXml, media) =>
                 const imageIndex = imageIndexes.get(Number(markerIndex))
                 return imageIndex === undefined ? '' : `@@KNOWLEDGE_IMAGE_${imageIndex}@@`
             })
-        if (paragraph.numbered && listType !== paragraph.listType) {
+        const isBullet = paragraph.numbered && paragraph.listType === 'ul'
+        if (isBullet && listType !== 'ul') {
             if (listType) html += `</${listType}>`
-            listType = paragraph.listType
-            html += `<${listType}>`
-        } else if (!paragraph.numbered && listType) {
+            listType = 'ul'
+            html += '<ul>'
+        } else if (!isBullet && listType) {
             html += `</${listType}>`
             listType = null
         }
         const heading = /^Heading([1-6])$/i.exec(paragraph.style)
-        if (paragraph.numbered) html += `<li>${content || '<br>'}</li>`
+        const numberedContent = paragraph.numberLabel
+            ? `${paragraph.numberLabel} ${content}`
+            : content
+        if (isBullet) html += `<li>${content || '<br>'}</li>`
+        else if (paragraph.numbered && heading) {
+            html += `<h${heading[1]}>${numberedContent || '<br>'}</h${heading[1]}>`
+        } else if (paragraph.numbered) html += `<p>${numberedContent || '<br>'}</p>`
         else if (heading) html += `<h${heading[1]}>${content || '<br>'}</h${heading[1]}>`
         else html += `<p>${content || '<br>'}</p>`
     }
