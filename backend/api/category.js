@@ -103,10 +103,16 @@ module.exports = app => {
         return tree
     }
 
-    const getTree = (req, res) => {
-        app.db('categories')
-            .then(categories => res.json(toTree(categories)))
-            .catch(err => res.status(500).send(err))
+    const getTree = async (req, res) => {
+        try {
+            const tree = req.user.admin
+                ? toTree(await app.db('categories'))
+                : await app.api.categoryAccess.getTree(req.user)
+            return res.json(tree)
+        } catch (error) {
+            console.error('Falha ao carregar árvore de categorias:', error)
+            return res.status(500).send('Não foi possível carregar as categorias.')
+        }
     }
 
     return { save, remove, get, getById, getTree }

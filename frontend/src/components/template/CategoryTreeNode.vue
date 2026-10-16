@@ -1,6 +1,9 @@
 <template>
     <li class="category-tree-node">
-        <button class="category-tree-link" type="button" @click="$emit('select', node)">
+        <button class="category-tree-link" type="button"
+            :disabled="node.navigationOnly"
+            :title="node.navigationOnly ? 'Acesse uma subcategoria liberada' : ''"
+            @click="$emit('select', node)">
             <Folder :size="16" aria-hidden="true" />
             {{ node.name }}
         </button>
@@ -58,5 +61,14 @@ export default {
 .category-tree-link:focus {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
+}
+
+.category-tree-link:disabled {
+    color: #98a2b3;
+    cursor: default;
+}
+
+.category-tree-link:disabled:hover {
+    background: transparent;
 }
 </style>

@@ -36,6 +36,33 @@
                     class="form-check-input" type="checkbox">
                 <label class="form-check-label" for="user-admin">Administrador?</label>
             </div>
+            <section v-if="mode === 'save' && !user.admin" class="category-access-panel">
+                <div class="category-access-heading">
+                    <div>
+                        <h4>Categorias disponíveis</h4>
+                        <p>O usuário verá as categorias selecionadas e suas subcategorias.</p>
+                    </div>
+                    <div class="category-access-actions">
+                        <button class="btn btn-sm btn-outline-primary" type="button"
+                            @click="selectAllCategories">Selecionar todas</button>
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                            @click="user.categoryIds = []">Limpar</button>
+                    </div>
+                </div>
+                <div v-if="categories.length" class="category-access-list">
+                    <label v-for="category in categories" :key="category.id"
+                        class="category-access-option">
+                        <input class="form-check-input" type="checkbox"
+                            :checked="user.categoryIds?.includes(Number(category.id))"
+                            @change="setCategoryAccess(category.id, $event.target.checked)">
+                        <span>{{ category.path }}</span>
+                    </label>
+                </div>
+                <p v-else class="category-access-empty">Nenhuma categoria cadastrada.</p>
+                <small v-if="!user.categoryIds?.length" class="category-access-warning">
+                    Sem categorias selecionadas, o usuário não verá artigos.
+                </small>
+            </section>
             <div class="row" v-show="mode === 'save'">
                 <div class="col-12 col-md-6">
                     <div class="mb-3">
@@ -111,6 +138,7 @@ export default {
             user: {},
             pendingDelete: null,
             users: [],
+            categories: [],
             fields: [
                 { key: 'id', label: 'Código', sortable: true },
                 { key: 'name', label: 'Nome', sortable: true },
@@ -128,7 +156,7 @@ export default {
         },
         reset() {
             this.mode = 'save'
-            this.user = {}
+            this.user = { admin: false, categoryIds: [] }
             this.loadUsers()
         },
         save() {
@@ -151,15 +179,47 @@ export default {
                 })
                 .catch(showError)
         },
-        loadUser(user, mode = 'save') {
+        async loadUser(user, mode = 'save') {
             this.mode = mode
-            this.user = { ...user }
+            if (mode === 'remove') {
+                this.user = { ...user }
+                return
+            }
+            try {
+                const response = await axios.get(`${baseApiUrl}/users/${user.id}`)
+                this.user = {
+                    ...response.data,
+                    categoryIds: (response.data.categoryIds || []).map(Number)
+                }
+            } catch (error) {
+                showError(error)
+            }
+        },
+        loadCategories() {
+            axios.get(`${baseApiUrl}/categories`)
+                .then(response => { this.categories = response.data })
+                .catch(showError)
+        },
+        selectAllCategories() {
+            this.user.categoryIds = this.categories.map(category => Number(category.id))
+        },
+        setCategoryAccess(categoryId, enabled) {
+            const selected = new Set((this.user.categoryIds || []).map(Number))
+            if (enabled) selected.add(Number(categoryId))
+            else selected.delete(Number(categoryId))
+            this.user.categoryIds = [...selected]
         }
     },
     mounted() {
+        this.user = { admin: false, categoryIds: [] }
         this.loadUsers()
+        this.loadCategories()
     }
 }
 </script>
 
-<style>.admin-form-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;padding:18px 20px;border:1px solid var(--color-border);border-radius:14px;background:linear-gradient(120deg,#f5f7ff,#fff)}.admin-form-heading h3{margin:0;color:#202b45;font-size:1.08rem;font-weight:700}.admin-form-heading p{margin:5px 0 0;color:var(--color-muted);font-size:.87rem}.admin-mode-badge{padding:6px 10px;border-radius:999px;color:var(--color-primary-dark);background:#e9edff;font-size:.78rem;font-weight:700;white-space:nowrap}.admin-confirm-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(16,24,40,.52)}.admin-confirm-dialog{width:min(100%,440px);padding:24px;border:1px solid var(--color-border);border-radius:16px;background:#fff;box-shadow:0 24px 64px rgba(16,24,40,.24)}.admin-confirm-dialog h3{margin:0 0 8px;font-size:1.12rem;font-weight:700}.admin-confirm-dialog p{color:var(--color-muted)}.admin-confirm-dialog>div{display:flex;justify-content:flex-end;gap:10px}</style>
+<style>
+.admin-form-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;padding:18px 20px;border:1px solid var(--color-border);border-radius:14px;background:linear-gradient(120deg,#f5f7ff,#fff)}.admin-form-heading h3{margin:0;color:#202b45;font-size:1.08rem;font-weight:700}.admin-form-heading p{margin:5px 0 0;color:var(--color-muted);font-size:.87rem}.admin-mode-badge{padding:6px 10px;border-radius:999px;color:var(--color-primary-dark);background:#e9edff;font-size:.78rem;font-weight:700;white-space:nowrap}.admin-confirm-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(16,24,40,.52)}.admin-confirm-dialog{width:min(100%,440px);padding:24px;border:1px solid var(--color-border);border-radius:16px;background:#fff;box-shadow:0 24px 64px rgba(16,24,40,.24)}.admin-confirm-dialog h3{margin:0 0 8px;font-size:1.12rem;font-weight:700}.admin-confirm-dialog p{color:var(--color-muted)}
+.category-access-panel{margin:18px 0 22px;padding:18px;border:1px solid var(--color-border);border-radius:12px;background:#f8f9fc}.category-access-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}.category-access-heading h4{margin:0;color:#202b45;font-size:.96rem;font-weight:700}.category-access-heading p{margin:4px 0 0;color:var(--color-muted);font-size:.82rem}.category-access-actions{display:flex;gap:8px;flex-wrap:wrap}.category-access-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:6px;max-height:250px;overflow:auto;padding:4px}.category-access-option{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border:1px solid transparent;border-radius:8px;background:#fff;font-size:.84rem;cursor:pointer}.category-access-option:hover{border-color:#c7cffb;background:#f5f6ff}.category-access-option .form-check-input{flex:none;margin-top:3px}.category-access-empty,.category-access-warning{display:block;margin:10px 0 0;color:#8a4b12;font-size:.8rem}
+@media(max-width:575.98px){.category-access-heading{flex-direction:column}}
+</style>

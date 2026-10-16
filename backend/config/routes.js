@@ -31,7 +31,10 @@ module.exports = app => {
         .get(app.api.category.getTree)
 
     app.route('/categories/:id')
-        .all(app.config.passport.authenticate())
+        .all(
+            app.config.passport.authenticate(),
+            app.api.categoryAccess.authorizeCategory
+        )
         .get(app.api.category.getById)
         .put(admin(app.api.category.save))
         .delete(admin(app.api.category.remove))
@@ -50,21 +53,33 @@ module.exports = app => {
         .post(admin(app.api.attachments.handleUpload))
 
     app.route('/articles/:id/attachments/:attachmentId')
-        .all(app.config.passport.authenticate())
+        .all(
+            app.config.passport.authenticate(),
+            app.api.categoryAccess.authorizeArticle
+        )
         .get(app.api.attachments.download)
 
     app.route('/articles/:id/attachments/:attachmentId/images/:imageId')
-        .all(app.config.passport.authenticate())
+        .all(
+            app.config.passport.authenticate(),
+            app.api.categoryAccess.authorizeArticle
+        )
         .get(app.api.attachments.downloadImage)
 
     app.route('/articles/:id')
-        .all(app.config.passport.authenticate())
+        .all(
+            app.config.passport.authenticate(),
+            app.api.categoryAccess.authorizeArticle
+        )
         .get(app.api.article.getById)
         .put(admin(app.api.article.save))
         .delete(admin(app.api.article.remove))
 
     app.route('/categories/:id/articles')
-        .all(app.config.passport.authenticate())
+        .all(
+            app.config.passport.authenticate(),
+            app.api.categoryAccess.authorizeCategory
+        )
         .get(app.api.article.getByCategory)
 
     app.route('/stats')

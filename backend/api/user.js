@@ -3,55 +3,81 @@
 module.exports = app => {
     const { existsOrError, notExistsOrError, equalsOrError } = app.api.validation
 
-    const encryptPassword = password => {
-        const salt = bcrypt.genSaltSync(10)
-        return bcrypt.hashSync(password, salt)
-    }
+    const encryptPassword = password => bcrypt.hashSync(password, bcrypt.genSaltSync(12))
 
     const save = async (req, res) => {
-        const user = { ...req.body }
-        if(req.params.id) user.id = req.params.id
-
-        if(!req.originalUrl.startsWith('/users')) user.admin = false
-        if(!req.user || !req.user.admin) user.admin = false
+        const user = {
+            name: req.body.name,
+            email: req.body.email,
+            admin: Boolean(req.user?.admin && req.body.admin === true)
+        }
+        if (req.params.id) user.id = req.params.id
+        const categoryIds = Array.isArray(req.body.categoryIds)
+            ? [...new Set(req.body.categoryIds.map(Number))]
+            : []
 
         try {
             existsOrError(user.name, 'Nome não informado')
             existsOrError(user.email, 'E-mail não informado')
-            if (!user.id || user.password) {
-                existsOrError(user.password, 'Senha não informada')
-                existsOrError(user.confirmPassword, 'Confirmação de Senha inválida')
-                equalsOrError(user.password, user.confirmPassword, 'Senhas não conferem')
-                user.password = encryptPassword(user.password)
-            } else {
-                delete user.password
-                delete user.confirmPassword
+            if (!user.id || req.body.password) {
+                const password = req.body.password
+                existsOrError(password, 'Senha não informada')
+                existsOrError(req.body.confirmPassword, 'Confirmação de Senha inválida')
+                equalsOrError(password, req.body.confirmPassword, 'Senhas não conferem')
+                user.password = encryptPassword(password)
             }
 
-            const userFromDB = await app.db('users')
-                .where({ email: user.email }).first()
-            if(!user.id) {
-                notExistsOrError(userFromDB, 'Usuário já cadastrado')
+            const duplicateEmail = await app.db('users')
+                .where({ email: user.email })
+                .modify(query => user.id && query.whereNot('id', user.id))
+                .first('id')
+            notExistsOrError(duplicateEmail, 'E-mail já cadastrado')
+
+            if (!user.admin && categoryIds.length) {
+                if (categoryIds.some(id => !Number.isInteger(id) || id <= 0)) {
+                    throw 'Seleção de categorias inválida.'
+                }
+                const validCategories = await app.db('categories')
+                    .whereIn('id', categoryIds)
+                    .count('id as count')
+                    .first()
+                existsOrError(
+                    Number(validCategories.count) === categoryIds.length,
+                    'Uma ou mais categorias não foram encontradas.'
+                )
             }
         } catch(msg) {
             return res.status(400).send(msg)
         }
 
-        delete user.confirmPassword
+        try {
+            await app.db.transaction(async transaction => {
+                let userId = user.id
+                if (userId) {
+                    const updatedRows = await transaction('users')
+                        .where({ id: userId })
+                        .whereNull('deletedAt')
+                        .update(user)
+                    existsOrError(updatedRows, 'Usuário não foi encontrado.')
+                } else {
+                    const [created] = await transaction('users')
+                        .insert({ ...user, mustChangePassword: true })
+                        .returning('id')
+                    userId = created.id
+                }
 
-        if(user.id) {
-            app.db('users')
-                .update(user)
-                .where({ id: user.id })
-                .whereNull('deletedAt')
-                .then(_ => res.status(204).send())
-                .catch(err => res.status(500).send(err))
-        } else {
-            user.mustChangePassword = true
-            app.db('users')
-                .insert(user)
-                .then(_ => res.status(204).send())
-                .catch(err => res.status(500).send(err))
+                await transaction('user_category_access').where({ userId }).del()
+                if (!user.admin && categoryIds.length) {
+                    await transaction('user_category_access').insert(
+                        categoryIds.map(categoryId => ({ userId, categoryId }))
+                    )
+                }
+            })
+            return res.status(user.id ? 204 : 201).send()
+        } catch (error) {
+            if (typeof error === 'string') return res.status(400).send(error)
+            console.error('Falha ao salvar usuário e permissões:', error)
+            return res.status(500).send('Não foi possível salvar o usuário.')
         }
     }
 
@@ -63,14 +89,24 @@ module.exports = app => {
             .catch(err => res.status(500).send(err))
     }
 
-    const getById = (req, res) => {
-        app.db('users')
+    const getById = async (req, res) => {
+        try {
+            const user = await app.db('users')
             .select('id', 'name', 'email', 'admin')
             .where({ id: req.params.id })
             .whereNull('deletedAt')
             .first()
-            .then(user => res.json(user))
-            .catch(err => res.status(500).send(err))
+            if (!user) return res.status(404).send('Usuário não encontrado.')
+            user.categoryIds = user.admin
+                ? []
+                : await app.db('user_category_access')
+                    .where({ userId: user.id })
+                    .pluck('categoryId')
+            return res.json(user)
+        } catch (error) {
+            console.error('Falha ao carregar permissões do usuário:', error)
+            return res.status(500).send('Não foi possível carregar o usuário.')
+        }
     }
 
     const remove = async (req, res) => {
@@ -83,6 +119,7 @@ module.exports = app => {
                 .update({deletedAt: new Date()})
                 .where({ id: req.params.id })
             existsOrError(rowsUpdated, 'Usuário não foi encontrado.')
+            await app.db('user_category_access').where({ userId: req.params.id }).del()
 
             res.status(204).send()
         } catch(msg) {

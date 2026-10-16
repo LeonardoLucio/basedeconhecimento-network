@@ -10,7 +10,9 @@
                 v-model="treeFilter" class="filter-field" aria-label="Buscar categoria">
         </label>
         <p v-if="!categoryTreeError && filteredTree.length === 0" class="tree-filter-empty">
-            {{ treeFilter ? 'Nenhuma categoria encontrada.' : 'Ainda não há categorias.' }}
+            {{ treeFilter ? 'Nenhuma categoria encontrada.' : user && !user.admin
+                ? 'Nenhuma categoria foi liberada para seu usuário.'
+                : 'Ainda não há categorias.' }}
         </p>
         <p v-if="categoryTreeError" class="tree-filter-empty">{{ categoryTreeError }}</p>
         <ul v-else class="category-tree">
