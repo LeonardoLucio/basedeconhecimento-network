@@ -12,11 +12,13 @@ module.exports = app => {
     const strategy = new Strategy(params, (payload, done) => {
         app.db('users')
             .where({ id: payload.id })
+            .whereNull('deletedAt')
             .first()
-            .then(user => done(null, user ? {
-                ...payload,
-                mustChangePassword: Boolean(payload.mustChangePassword || user.mustChangePassword)
-            } : false))
+            .then(user => {
+                if (!user) return done(null, false)
+                const { password, ...activeUser } = user
+                return done(null, activeUser)
+            })
             .catch(err => done(err, false))
     })
 

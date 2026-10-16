@@ -5,7 +5,7 @@
         <div v-if="error" class="article-state" role="alert">{{ error }}</div>
         <div v-else-if="loading" class="article-state" role="status">Carregando artigo...</div>
         <template v-else>
-            <article class="article-content" v-html="article.content"></article>
+            <article class="article-content" v-html="safeContent"></article>
             <section v-if="article.attachments?.length" class="article-attachments">
                 <h2><Paperclip :size="19" /> Arquivos originais</h2>
                 <ul>
@@ -27,15 +27,34 @@
 <script>
 import 'highlight.js/styles/monokai-sublime.css'
 import hljs from 'highlight.js/lib/common'
+import DOMPurify from 'dompurify'
 import { nextTick, markRaw } from 'vue'
 import axios from 'axios'
 import PageTitle from '../template/PageTitle.vue'
 import { Download, FileText, Paperclip } from '@lucide/vue'
 import { baseApiUrl, showError } from '@/global'
+import { getProtectedArticleImageUrl } from '@/utils/articleImages'
 
 export default {
     name: 'ArticleById',
     components: { PageTitle, Download, FileText, Paperclip },
+    computed: {
+        safeContent() {
+            const sanitized = DOMPurify.sanitize(this.article.content || '', {
+                USE_PROFILES: { html: true },
+                FORBID_TAGS: ['style', 'iframe', 'form', 'input', 'button', 'svg', 'math'],
+                FORBID_ATTR: ['srcset']
+            })
+            const documentContent = new DOMParser().parseFromString(sanitized, 'text/html')
+            documentContent.querySelectorAll('img[src]').forEach(image => {
+                const protectedUrl = getProtectedArticleImageUrl(image.getAttribute('src'))
+                if (!protectedUrl) return
+                image.dataset.protectedSrc = protectedUrl
+                image.removeAttribute('src')
+            })
+            return documentContent.body.innerHTML
+        }
+    },
     data: function() {
         return {
             article: {},
@@ -88,23 +107,26 @@ export default {
         },
         async loadInlineImages() {
             const images = Array.from(
-                this.$el.querySelectorAll('.article-content img')
-            ).filter(image =>
-                image.src.startsWith(`${baseApiUrl}/articles/`) &&
-                image.src.includes('/attachments/') &&
-                image.src.includes('/images/') &&
-                !image.dataset.imageLoading &&
-                !image.dataset.imageError
-            )
+                this.$el.querySelectorAll('.article-content img[data-protected-src]')
+            ).filter(image => !image.dataset.imageLoading && !image.dataset.imageError)
             await Promise.all(images.map(async image => {
                 image.dataset.imageLoading = 'true'
                 try {
-                    const { data } = await axios.get(image.src, { responseType: 'blob' })
+                    const { data } = await axios.get(
+                        image.dataset.protectedSrc,
+                        { responseType: 'blob' }
+                    )
                     const objectUrl = URL.createObjectURL(data)
-                    this.imageObjectUrls.push(objectUrl)
-                    if (image.isConnected) image.src = objectUrl
+                    if (image.isConnected) {
+                        this.imageObjectUrls.push(objectUrl)
+                        image.src = objectUrl
+                        image.removeAttribute('data-protected-src')
+                    } else {
+                        URL.revokeObjectURL(objectUrl)
+                    }
                 } catch (error) {
                     image.dataset.imageError = 'true'
+                    image.removeAttribute('data-protected-src')
                     showError(error)
                 } finally {
                     delete image.dataset.imageLoading

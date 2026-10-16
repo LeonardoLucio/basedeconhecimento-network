@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
+    "dev": "node --watch index.js",
     "migrate": "knex migrate:latest --knexfile knexfile.js",
     "test": "node --test",
-    "production": "pm2 start index.js --name knowledge-backend"
+    "production": "node index.js"
   },
   "keywords": [],
   "author": "",
@@ -26,13 +26,10 @@
     "passport-jwt": "^4.0.1",
     "pdf-parse": "^2.4.5",
     "pg": "^8.16.3",
-    "pm2": "^7.0.4",
+    "sanitize-html": "^2.17.7",
     "saxes": "^6.0.0",
     "word-extractor": "^1.0.4",
     "yauzl": "^3.4.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
   },
   "engines": {
     "node": ">=20.19.0 <21 || >=22.3.0"

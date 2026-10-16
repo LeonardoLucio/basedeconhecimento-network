@@ -1,4 +1,28 @@
 const queries = require('./queries')
+const sanitizeHtml = require('sanitize-html')
+
+const sanitizeArticleContent = content => sanitizeHtml(content, {
+    allowedTags: [
+        'a', 'blockquote', 'br', 'code', 'div', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'img', 'li', 'ol', 'p', 'pre', 's', 'span', 'strong', 'sub', 'sup', 'table',
+        'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul'
+    ],
+    allowedAttributes: {
+        a: ['href', 'name', 'target', 'rel'],
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        '*': ['class', 'style']
+    },
+    allowedStyles: {
+        '*': {
+            'color': [/^#[0-9a-f]{3,8}$/i, /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i],
+            'background-color': [/^#[0-9a-f]{3,8}$/i, /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i],
+            'font-size': [/^\d+(\.\d+)?(px|pt|em|rem|%)$/i],
+            'font-family': [/^[\w\s,"'-]+$/],
+            'text-align': [/^(left|right|center|justify)$/],
+            'text-decoration': [/^(underline|line-through)$/]
+        }
+    }
+})
 
 module.exports = app => {
     const { existsOrError } = app.api.validation
@@ -8,7 +32,9 @@ module.exports = app => {
             name: req.body.name,
             description: req.body.description || null,
             imageUrl: req.body.imageUrl || null,
-            content: req.body.content || null,
+            content: typeof req.body.content === 'string'
+                ? sanitizeArticleContent(req.body.content)
+                : null,
             userId: req.body.userId || null,
             categoryId: req.body.categoryId || null
         }

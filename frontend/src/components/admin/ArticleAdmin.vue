@@ -142,6 +142,7 @@ import { baseApiUrl, showError } from '@/global'
 import axios from 'axios'
 import { FileText, FileUp, Pencil, Trash2 } from '@lucide/vue'
 import { markRaw } from 'vue'
+import { getProtectedArticleImageUrl } from '@/utils/articleImages'
 
 export default {
     name: 'ArticleAdmin',
@@ -162,7 +163,6 @@ export default {
             lastSelection: null,
             imagePreviews: [],
             pendingDelete: null,
-            pendingFile: null,
             pendingFileImported: false,
             editorToolbar: [
                 ['bold', 'italic', 'underline', 'strike'],
@@ -354,9 +354,9 @@ export default {
                 this.editor.insertText(imageIndex++, '\n', 'user')
             }
         },
-        async loadImagePreview(imageUrl) {
+        async loadImagePreview(imageUrl, sourceUrl = imageUrl) {
             const existingPreview = this.imagePreviews.find(preview =>
-                preview.source === imageUrl
+                preview.source === sourceUrl
             )
             if (existingPreview) return existingPreview.dataUrl
 
@@ -367,7 +367,7 @@ export default {
                 reader.onerror = () => reject(reader.error)
                 reader.readAsDataURL(data)
             })
-            const preview = { source: imageUrl, dataUrl }
+            const preview = { source: sourceUrl, dataUrl }
             this.imagePreviews.push(preview)
             return preview.dataUrl
         },
@@ -380,12 +380,14 @@ export default {
                 }
             }
             const images = Array.from(parsed.images).filter(image =>
-                image.src.startsWith(`${baseApiUrl}/articles/`) &&
-                image.src.includes('/attachments/') &&
-                image.src.includes('/images/')
+                getProtectedArticleImageUrl(image.getAttribute('src'))
             )
             await Promise.all(images.map(async image => {
-                image.src = await this.loadImagePreview(image.src)
+                const sourceUrl = image.getAttribute('src')
+                image.src = await this.loadImagePreview(
+                    getProtectedArticleImageUrl(sourceUrl),
+                    sourceUrl
+                )
             }))
             return parsed.body.innerHTML
         },

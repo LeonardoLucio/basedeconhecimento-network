@@ -61,8 +61,10 @@ export default {
 			try {
 				const res = await axios.post(`${baseApiUrl}/validateToken`, userData)
 
-				if (res.data) {
-					useAppStore().setUser(userData)
+				if (res.data?.valid && res.data.user) {
+					const refreshedUser = { ...res.data.user, token: userData.token }
+					localStorage.setItem(userKey, JSON.stringify(refreshedUser))
+					useAppStore().setUser(refreshedUser)
 
 					if(window.matchMedia('(max-width: 767.98px)').matches) {
 						useAppStore().toggleMenu(false)

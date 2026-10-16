@@ -10,6 +10,7 @@ module.exports = app => {
 
         const user = await app.db('users')
             .where({ email: req.body.email })
+            .whereNull('deletedAt')
             .first()
 
         if (!user) return res.status(400).send('Usuário não encontrado!')
@@ -38,17 +39,21 @@ module.exports = app => {
     const validateToken = async (req, res) => {
         const userData = req.body || null
         try {
-            if(userData) {
+            if(userData?.token) {
                 const token = jwt.decode(userData.token, authSecret)
                 if(new Date(token.exp * 1000) > new Date()) {
-                    return res.send(true)
+                    const user = await app.db('users')
+                        .where({ id: token.id })
+                        .whereNull('deletedAt')
+                        .first('id', 'name', 'email', 'admin', 'mustChangePassword')
+                    if (user) return res.json({ valid: true, user })
                 }
             }
         } catch(e) {
             // problema com o token
         }
 
-        res.send(false)
+        res.json({ valid: false })
     }
 
     const changePassword = async (req, res) => {
