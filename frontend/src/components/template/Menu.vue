@@ -9,10 +9,10 @@
             <input type="search" placeholder="Buscar categoria..."
                 v-model="treeFilter" class="filter-field" aria-label="Buscar categoria">
         </label>
-        <p v-if="!error && filteredTree.length === 0" class="tree-filter-empty">
+        <p v-if="!categoryTreeError && filteredTree.length === 0" class="tree-filter-empty">
             {{ treeFilter ? 'Nenhuma categoria encontrada.' : 'Ainda não há categorias.' }}
         </p>
-        <p v-if="error" class="tree-filter-empty">{{ error }}</p>
+        <p v-if="categoryTreeError" class="tree-filter-empty">{{ categoryTreeError }}</p>
         <ul v-else class="category-tree">
             <CategoryTreeNode
                 v-for="node in filteredTree"
@@ -25,10 +25,8 @@
 </template>
 
 <script>
-import { mapState } from 'pinia'
+import { mapActions, mapState } from 'pinia'
 import { useAppStore } from '@/config/store'
-import { baseApiUrl } from '@/global'
-import axios from 'axios'
 import CategoryTreeNode from './CategoryTreeNode.vue'
 import { Search } from '@lucide/vue'
 
@@ -37,13 +35,11 @@ export default {
     components: { CategoryTreeNode, Search },
     data: function() {
         return {
-            treeFilter: '',
-            treeData: [],
-            error: null
+            treeFilter: ''
         }
     },
     computed: {
-        ...mapState(useAppStore, ['isMenuVisible']),
+        ...mapState(useAppStore, ['isMenuVisible', 'user', 'categoryTree', 'categoryTreeError']),
         filteredTree() {
             const filterNodes = nodes => nodes.reduce((matches, node) => {
                 const children = filterNodes(node.children || [])
@@ -57,20 +53,12 @@ export default {
             }, [])
 
             return this.treeFilter.trim()
-                ? filterNodes(this.treeData)
-                : this.treeData
+                ? filterNodes(this.categoryTree)
+                : this.categoryTree
         }
     },
     methods: {
-        async getTreeData() {
-            try {
-                const response = await axios.get(`${baseApiUrl}/categories/tree`)
-                this.treeData = response.data
-            } catch (error) {
-                this.error = 'Não foi possível carregar as categorias.'
-                console.error('Falha ao carregar categorias:', error)
-            }
-        },
+        ...mapActions(useAppStore, ['loadCategoryTree']),
         onNodeSelect(node) {
             this.$router.push({
                 name: 'articlesByCategory',
@@ -82,8 +70,13 @@ export default {
             }
         }
     },
+    watch: {
+        user(user) {
+            if (user) this.loadCategoryTree()
+        }
+    },
     mounted() {
-        this.getTreeData()
+        if (this.user) this.loadCategoryTree()
     }
 }
 </script>

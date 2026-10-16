@@ -80,6 +80,7 @@
 import { baseApiUrl, showError } from '@/global'
 import axios from 'axios'
 import { Pencil, Trash2 } from '@lucide/vue'
+import { useAppStore } from '@/config/store'
 
 export default {
     name: 'CategoryAdmin',
@@ -116,7 +117,8 @@ export default {
             const method = this.category.id ? 'put' : 'post'
             const id = this.category.id ? `/${this.category.id}` : ''
             axios[method](`${baseApiUrl}/categories${id}`, this.category)
-                .then(() => {
+                .then(async () => {
+                    await useAppStore().loadCategoryTree()
                     this.$toasted.global.defaultSuccess()
                     this.reset()
                 })
@@ -125,7 +127,8 @@ export default {
         remove(category) {
             const id = category.id
             axios.delete(`${baseApiUrl}/categories/${id}`)
-                .then(() => {
+                .then(async () => {
+                    await useAppStore().loadCategoryTree()
                     this.pendingDelete = null
                     this.$toasted.global.defaultSuccess()
                     this.reset()
