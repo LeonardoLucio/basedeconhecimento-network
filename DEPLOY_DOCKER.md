@@ -54,7 +54,7 @@ Após trocar a senha no primeiro acesso, substitua o valor temporário do arquiv
 
 ## 4. HTTPS e atualizações
 
-Por padrão, o frontend fica vinculado apenas a `127.0.0.1`, então só aceita conexões feitas no próprio servidor. Para acessá-lo de outros dispositivos da rede local, descubra o IP LAN do servidor com `ip -4 addr`, defina esse endereço em `WEB_BIND_ADDRESS` no `.env.production` e mantenha a porta indicada em `WEB_PORT`. Recrie o frontend com `sudo docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate frontend`. Acesse `http://IP-LAN-DO-SERVIDOR:PORTA`.
+Por padrão, o frontend fica vinculado a `0.0.0.0`, aceitando conexões em todas as interfaces de rede do servidor. Acesse `http://IP-DO-SERVIDOR:PORTA`, usando a porta definida em `WEB_PORT` (8888 no exemplo desta implantação). Para limitar o acesso, defina em `WEB_BIND_ADDRESS` um IP específico do servidor. O firewall do servidor, o roteador e as regras do provedor ainda podem bloquear conexões. Para acesso pela internet, use HTTPS com um proxy reverso e proteja o acesso no firewall.
 
 Para acesso pela internet, configure um proxy reverso HTTPS, como Caddy ou Nginx. Não publique a porta do PostgreSQL na internet.
 
