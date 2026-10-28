@@ -82,7 +82,7 @@ module.exports = app => {
             content: typeof req.body.content === 'string'
                 ? sanitizeArticleContent(req.body.content)
                 : null,
-            userId: req.body.userId || null,
+            userId: req.user?.id || null,
             categoryId: req.body.categoryId || null
         }
         if (req.params.id) article.id = req.params.id

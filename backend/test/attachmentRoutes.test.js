@@ -6,9 +6,10 @@ const configureRoutes = require('../config/routes')
 test('registra a rota autenticada para servir imagens extraídas', () => {
     const registeredRoutes = []
     const noop = () => {}
+    const attachments = createAttachmentsApi({ db: noop })
     const app = {
         api: {
-            attachments: createAttachmentsApi({ db: noop }),
+            attachments,
             article: {
                 get: noop,
                 save: noop,
@@ -50,4 +51,10 @@ test('registra a rota autenticada para servir imagens extraídas', () => {
     assert.ok(imageRoute)
     assert.equal(imageRoute.handlers.get[0], app.api.attachments.downloadImage)
     assert.equal(typeof imageRoute.handlers.get[0], 'function')
+
+    const attachmentRoute = registeredRoutes.find(route =>
+        route.path === '/articles/:id/attachments/:attachmentId'
+    )
+    assert.ok(attachmentRoute)
+    assert.equal(typeof attachmentRoute.handlers.delete[0], 'function')
 })

@@ -58,6 +58,7 @@ module.exports = app => {
             app.api.categoryAccess.authorizeArticle
         )
         .get(app.api.attachments.download)
+        .delete(admin(app.api.attachments.remove))
 
     app.route('/articles/:id/attachments/:attachmentId/images/:imageId')
         .all(

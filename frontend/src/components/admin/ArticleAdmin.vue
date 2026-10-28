@@ -49,12 +49,10 @@
                 </select>
             </div>
             <div v-if="mode === 'save'" class="mb-3">
-                <label class="form-label" for="article-userId">Autor <span class="required-mark">*</span></label>
-                <select id="article-userId" class="form-select" required v-model="article.userId">
-                    <option :value="null" disabled>Selecione um autor</option>
-                    <option v-for="user in users" :key="user.value"
-                        :value="user.value">{{ user.text }}</option>
-                </select>
+                <label class="form-label" for="article-author">Autor</label>
+                <input id="article-author" class="form-control" type="text"
+                    :value="user?.name || 'Usuário não identificado'" readonly>
+                <small class="text-muted">O autor é definido automaticamente pela conta conectada.</small>
             </div>
             <div v-if="mode === 'save'" class="mb-3">
                 <div class="editor-label-row">
@@ -85,10 +83,15 @@
                     bloco de comandos — eles são salvos exatamente como digitados e nunca são executados.
                 </small>
             </div>
-            <div v-if="mode === 'save'" class="attachment-panel">
+            <div v-if="mode === 'save'"
+                class="attachment-panel"
+                :class="{ 'is-dragging': draggingFiles }"
+                @dragover.prevent="draggingFiles = true"
+                @dragleave.prevent="draggingFiles = false"
+                @drop.prevent="handleAttachmentDrop">
                 <div>
                     <strong>Importar documento</strong>
-                    <p>O documento será importado para o conteúdo antes de salvar. O original ficará anexado para download.</p>
+                    <p>Arraste um PDF, DOC ou DOCX para cá, ou selecione no computador. O texto extraído será acrescentado ao conteúdo e o original ficará anexado.</p>
                 </div>
                 <label class="btn btn-outline-primary file-picker"
                     :class="{ 'is-disabled': !editor || uploading || (!article.id && pendingFile) }">
@@ -103,11 +106,18 @@
                     {{ uploading ? 'Importando...' : pendingFile ? 'Documento carregado' : 'Selecionar arquivo' }}
                 </label>
                 <small v-if="pendingFile">Documento pronto. Salve o artigo para anexar o original.</small>
+                <small v-else>Limite de 20 MB por arquivo. Excluir o original não remove o texto já importado para o conteúdo.</small>
                 <ul v-if="article.attachments?.length" class="attachment-list">
                     <li v-for="attachment in article.attachments" :key="attachment.id">
                         <FileText :size="16" />
                         <span>{{ attachment.originalName }}</span>
                         <small>{{ formatSize(attachment.size) }}</small>
+                        <button class="btn btn-outline-danger btn-sm" type="button"
+                            :disabled="uploading"
+                            :aria-label="`Excluir arquivo ${attachment.originalName}`"
+                            @click="removeAttachment(attachment)">
+                            <Trash2 :size="14" /> Excluir
+                        </button>
                     </li>
                 </ul>
             </div>
@@ -162,6 +172,8 @@ import { baseApiUrl, showError } from '@/global'
 import axios from 'axios'
 import { FileText, FileUp, Pencil, Terminal, Trash2 } from '@lucide/vue'
 import { markRaw } from 'vue'
+import { mapState } from 'pinia'
+import { useAppStore } from '@/config/store'
 import { getProtectedArticleImageUrl } from '@/utils/articleImages'
 
 export default {
@@ -173,12 +185,12 @@ export default {
             article: {},
             articles: [],
             categories: [],
-            users: [],
             page: 1,
             limit: 0,
             count: 0,
             editor: null,
             uploading: false,
+            draggingFiles: false,
             pendingFile: null,
             lastSelection: null,
             imagePreviews: [],
@@ -199,6 +211,7 @@ export default {
         }
     },
     computed: {
+        ...mapState(useAppStore, ['user']),
         totalPages() {
             return Math.max(1, Math.ceil(this.count / (this.limit || 1)))
         }
@@ -221,11 +234,16 @@ export default {
             this.pendingFileImported = false
             this.releaseImagePreviews()
             this.loadArticles()
+            if (this.$route.query.articleId) {
+                const query = { ...this.$route.query }
+                delete query.articleId
+                this.$router.replace({ query })
+            }
         },
         async save() {
             const contentRoot = this.editor?.root
             const hasContent = Boolean(contentRoot?.textContent?.trim() || contentRoot?.querySelector('img'))
-            if (!this.article.name?.trim() || !this.article.categoryId || !this.article.userId || !hasContent) {
+            if (!this.article.name?.trim() || !this.article.categoryId || !this.user?.id || !hasContent) {
                 this.$toasted.global.defaultError({
                     msg: 'Preencha nome, categoria, autor e conteúdo antes de salvar.'
                 })
@@ -236,6 +254,7 @@ export default {
             const id = isNew ? '' : `/${this.article.id}`
             const articleToSave = {
                 ...this.article,
+                userId: this.user?.id,
                 content: this.restoreImageUrls(
                     this.editor?.root?.innerHTML || this.article.content || ''
                 )
@@ -294,19 +313,39 @@ export default {
             if (range) this.lastSelection = { index: range.index, length: range.length }
         },
         async uploadAttachment(event) {
-            const [file] = event.target.files
+            const files = Array.from(event.target.files || [])
             event.target.value = ''
-            if (!file) return
+            await this.handleAttachmentFiles(files)
+        },
+        async handleAttachmentDrop(event) {
+            this.draggingFiles = false
+            await this.handleAttachmentFiles(Array.from(event.dataTransfer?.files || []))
+        },
+        async handleAttachmentFiles(files) {
+            if (!files.length) return
+            if (!this.editor || this.uploading) return
 
             if (!this.article.id) {
-                if (this.pendingFile) {
-                    this.$toasted.global.defaultError({ msg: 'Importe um documento por vez antes de salvar o artigo.' })
+                if (files.length > 1) {
+                    this.$toasted.global.defaultError({
+                        msg: 'Para um artigo novo, importe um documento por vez e salve antes de adicionar outro.'
+                    })
                     return
                 }
-                await this.previewAttachment(file)
+                if (this.pendingFile) {
+                    this.$toasted.global.defaultError({
+                        msg: 'Salve o documento pendente antes de importar outro.'
+                    })
+                    return
+                }
+                await this.previewAttachment(files[0])
                 return
             }
-            await this.uploadFile(file)
+
+            for (const file of files) {
+                const uploaded = await this.uploadFile(file)
+                if (!uploaded) break
+            }
         },
         async previewAttachment(file) {
             this.uploading = true
@@ -351,6 +390,7 @@ export default {
                 }
                 const articleToSave = {
                     ...this.article,
+                    userId: this.user?.id,
                     content: this.restoreImageUrls(this.editor.root.innerHTML)
                 }
                 await axios.put(`${baseApiUrl}/articles/${this.article.id}`, articleToSave)
@@ -362,6 +402,7 @@ export default {
                             ? `${data.images.length} imagem(ns) importada(s) no Conteúdo.`
                             : 'Texto importado no Conteúdo e artigo salvo.'
                 })
+                return true
             } catch (error) {
                 showError(error)
                 if (this.article.attachments?.some(attachment => attachment.originalName === file.name)) {
@@ -369,6 +410,7 @@ export default {
                         msg: 'O arquivo foi anexado, mas o conteúdo extraído não pôde ser salvo. Salve o artigo novamente.'
                     })
                 }
+                return false
             } finally {
                 this.uploading = false
             }
@@ -457,6 +499,51 @@ export default {
                 ? `${Math.max(1, Math.round(size / 1024))} KB`
                 : `${(size / (1024 * 1024)).toFixed(1)} MB`
         },
+        async removeAttachment(attachment) {
+            if (!window.confirm(`Excluir o arquivo original "${attachment.originalName}"? O texto importado permanecerá no conteúdo.`)) {
+                return
+            }
+
+            try {
+                const imagePreviews = this.imagePreviews.filter(preview =>
+                    preview.source.includes(
+                        `/articles/${this.article.id}/attachments/${attachment.id}/images/`
+                    )
+                )
+                if (imagePreviews.length && this.editor) {
+                    const html = this.editor.root.innerHTML
+                    const parsed = new DOMParser().parseFromString(html, 'text/html')
+                    const previewUrls = new Set(imagePreviews.map(preview => preview.dataUrl))
+                    parsed.querySelectorAll('img').forEach(image => {
+                        if (previewUrls.has(image.getAttribute('src'))) image.remove()
+                    })
+                    const cleanedHtml = parsed.body.innerHTML
+                    const delta = this.editor.clipboard.convert({ html: cleanedHtml, text: '' })
+                    await axios.put(`${baseApiUrl}/articles/${this.article.id}`, {
+                        ...this.article,
+                        content: this.restoreImageUrls(cleanedHtml)
+                    })
+                    this.editor.setContents(delta, 'api')
+                    this.article.content = cleanedHtml
+                    this.dirty = false
+                }
+
+                await axios.delete(
+                    `${baseApiUrl}/articles/${this.article.id}/attachments/${attachment.id}`
+                )
+                this.article.attachments = this.article.attachments.filter(item =>
+                    item.id !== attachment.id
+                )
+                this.imagePreviews = this.imagePreviews.filter(preview =>
+                    !preview.source.includes(
+                        `/articles/${this.article.id}/attachments/${attachment.id}/images/`
+                    )
+                )
+                this.$toasted.global.defaultSuccess({ msg: 'Arquivo excluído do artigo.' })
+            } catch (error) {
+                showError(error)
+            }
+        },
         remove(article) {
             const id = article.id
             axios.delete(`${baseApiUrl}/articles/${id}`)
@@ -477,6 +564,7 @@ export default {
                 .then(async res => {
                     this.releaseImagePreviews()
                     const loadedArticle = { ...res.data }
+                    loadedArticle.userId = this.user?.id
                     loadedArticle.content = await this.prepareContentImages(loadedArticle.content)
                     this.article = loadedArticle
                     this.dirty = false
@@ -491,25 +579,22 @@ export default {
                 })
             }).catch(showError)
         },
-        loadUsers() {
-            const url = `${baseApiUrl}/users`
-            axios.get(url).then(res => {
-                this.users = res.data.map(user => {
-                    return { value: user.id, text: `${user.name} - ${user.email}` }
-                })
-            }).catch(showError)
-        }
     },
     watch: {
         page() {
             this.loadArticles()
+        },
+        '$route.query.articleId'(id) {
+            if (id) this.loadArticle({ id })
         }
     },
     mounted() {
         window.addEventListener('beforeunload', this.warnBeforeLeaving)
-        this.loadUsers()
         this.loadCategories()
         this.loadArticles()
+        if (this.$route.query.articleId) {
+            this.loadArticle({ id: this.$route.query.articleId })
+        }
     },
     beforeUnmount() {
         window.removeEventListener('beforeunload', this.warnBeforeLeaving)
@@ -635,6 +720,13 @@ export default {
         background: var(--color-surface-alt);
         border: 1px dashed #cfd3e2;
         border-radius: var(--radius-md);
+        transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .attachment-panel.is-dragging {
+        border-color: var(--color-primary);
+        background: var(--color-primary-soft);
+        box-shadow: 0 0 0 4px rgba(91, 91, 214, 0.12);
     }
 
     .attachment-panel p { margin: 4px 0 0; color: var(--color-muted); font-size: 0.84rem; }
@@ -643,6 +735,7 @@ export default {
     .attachment-list li { display: flex; align-items: center; gap: 8px; min-width: 0; color: #344054; font-size: 0.86rem; }
     .attachment-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .attachment-list li small { margin-left: auto; color: var(--color-muted); }
+    .attachment-list li .btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; }
 
     @media (max-width: 575.98px) {
         .attachment-panel { grid-template-columns: 1fr; }

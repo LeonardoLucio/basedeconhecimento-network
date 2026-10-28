@@ -620,6 +620,26 @@ const createAttachmentsApi = app => {
         }
     }
 
+    const remove = async (req, res) => {
+        try {
+            const attachment = await app.db('article_attachments')
+                .where({ id: req.params.attachmentId, articleId: req.params.id })
+                .first('id', 'storedName')
+            if (!attachment) return res.status(404).send('Arquivo não encontrado.')
+
+            const deleted = await app.db('article_attachments')
+                .where({ id: attachment.id, articleId: req.params.id })
+                .del()
+            if (!deleted) return res.status(404).send('Arquivo não encontrado.')
+
+            await removeStoredFiles([attachment])
+            return res.status(204).send()
+        } catch (error) {
+            console.error('Falha ao excluir anexo do artigo:', error)
+            return res.status(500).send('Não foi possível excluir o arquivo.')
+        }
+    }
+
     const downloadImage = async (req, res) => {
         const match = /^(\d+)\.(png|jpg|gif|webp)$/.exec(req.params.imageId)
         if (!match) return res.status(404).send('Imagem não encontrada.')
@@ -681,7 +701,7 @@ const createAttachmentsApi = app => {
         }
     }
 
-    return { handlePreview, handleUpload, download, downloadImage, removeStoredFiles }
+    return { handlePreview, handleUpload, download, remove, downloadImage, removeStoredFiles }
 }
 
 createAttachmentsApi.extractText = extractText

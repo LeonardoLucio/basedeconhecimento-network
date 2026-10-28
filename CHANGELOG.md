@@ -1,5 +1,11 @@
 # Alterações desta versão
 
+## v1.2.0
+- Importação de documentos por arrastar e soltar, com suporte a vários arquivos em artigos já salvos.
+- Gerenciamento dos anexos importados: exclusão do original preservando o texto extraído e removendo as imagens correspondentes.
+- Atalho para editar artigos diretamente na lista, disponível para administradores.
+- Autor preenchido automaticamente com o usuário conectado; o backend ignora autores enviados pelo cliente.
+
 ## v1.1.0
 
 ## Correção: erro ao salvar comandos com `\` (ex.: pfSense)

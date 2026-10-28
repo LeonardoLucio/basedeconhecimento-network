@@ -56,7 +56,8 @@ test('salva comandos com barra invertida e && como texto, sem alterá-los', asyn
 
     await createArticleApi(app).save({
         body: { name: 'Upgrade pfSense', categoryId: 1, userId: 1, content: toCodeBlockHtml(pfSenseCommands) },
-        params: {}
+        params: {},
+        user: { id: 1 }
     }, response)
 
     assert.equal(response.statusCode, 201)
@@ -103,9 +104,30 @@ test('rejeita URL de imagem com esquema perigoso', async () => {
     const response = createResponse()
     await createArticleApi(createApp()).save({
         body: { name: 'x', categoryId: 1, userId: 1, content: '<p>a</p>', imageUrl: 'javascript:alert(1)' },
-        params: {}
+        params: {},
+        user: { id: 1 }
     }, response)
     assert.equal(response.statusCode, 400)
+})
+
+test('usa o usuário autenticado como autor, ignorando userId enviado pelo cliente', async () => {
+    let insertedArticle
+    const response = createResponse()
+    await createArticleApi(createApp({
+        onInsert: article => { insertedArticle = article }
+    })).save({
+        body: {
+            name: 'Artigo',
+            categoryId: 1,
+            userId: 1,
+            content: '<p>Conteúdo</p>'
+        },
+        params: {},
+        user: { id: 7 }
+    }, response)
+
+    assert.equal(response.statusCode, 201)
+    assert.equal(insertedArticle.userId, 7)
 })
 
 test('aceita imagem PNG em base64 e descarta SVG em data URI', () => {

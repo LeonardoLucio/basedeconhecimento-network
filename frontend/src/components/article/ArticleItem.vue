@@ -1,6 +1,7 @@
 <template>
     <div class="article-item">
-        <router-link :to="{ name: 'articleById', params: { id: article.id } }">
+        <router-link class="article-item-link"
+            :to="{ name: 'articleById', params: { id: article.id } }">
             <div class="article-item-image d-none d-sm-block">
                 <img v-if="article.imageUrl"
                     :src="article.imageUrl"
@@ -17,21 +18,35 @@
                 </span>
             </div>
         </router-link>
+        <router-link v-if="user?.admin"
+            class="article-item-edit"
+            :to="{ name: 'adminPages', query: { articleId: article.id } }"
+            :aria-label="`Editar artigo ${article.name}`"
+            title="Editar artigo">
+            <Pencil :size="17" aria-hidden="true" />
+        </router-link>
     </div>
 </template>
 
 <script>
-import { ArrowUpRight } from '@lucide/vue'
+import { mapState } from 'pinia'
+import { useAppStore } from '@/config/store'
+import { ArrowUpRight, Pencil } from '@lucide/vue'
 
 export default {
     name: 'ArticleItem',
-    components: { ArrowUpRight },
-    props: ['article']
+    components: { ArrowUpRight, Pencil },
+    props: ['article'],
+    computed: {
+        ...mapState(useAppStore, ['user'])
+    }
 }
 </script>
 
 <style>
     .article-item {
+        display: flex;
+        align-items: flex-start;
         margin-bottom: 14px;
         padding: 18px;
         background: var(--color-surface);
@@ -47,8 +62,10 @@ export default {
         box-shadow: var(--shadow-md);
     }
 
-    .article-item a {
+    .article-item-link {
         display: flex;
+        flex: 1;
+        min-width: 0;
         align-items: flex-start;
         text-decoration: none;
         color: var(--color-text);
@@ -108,6 +125,22 @@ export default {
     }
 
     .article-item-author strong { font-weight: 600; }
+
+    .article-item-edit {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        margin-left: 12px;
+        color: var(--color-primary-dark);
+        background: var(--color-primary-soft);
+        border-radius: 9px;
+        text-decoration: none;
+    }
+
+    .article-item-edit:hover { color: #fff; background: var(--color-primary); }
 
     @media (max-width: 575.98px) {
         .article-item { padding: 16px; }
