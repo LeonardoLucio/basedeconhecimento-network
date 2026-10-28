@@ -64,55 +64,51 @@ export default {
     }
 
     .welcome-card {
+        position: relative;
+        overflow: hidden;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 24px;
-        padding: clamp(22px, 4vw, 36px);
+        padding: clamp(24px, 4vw, 42px);
         color: #fff;
-        background: linear-gradient(115deg, #3344b5, #5869e8 72%, #7b88f2);
-        border-radius: 20px;
-        box-shadow: 0 16px 36px rgba(66, 85, 212, 0.18);
+        background:
+            radial-gradient(500px 240px at 100% 0%, rgba(255, 255, 255, 0.22), transparent 70%),
+            linear-gradient(120deg, #3b3bb0, #5b5bd6 60%, #7f7ff0);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 44px rgba(91, 91, 214, 0.26);
+    }
+
+    .welcome-card::after {
+        content: "";
+        position: absolute;
+        right: -60px;
+        bottom: -90px;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        border: 38px solid rgba(255, 255, 255, 0.07);
     }
 
     .welcome-card h2 {
         max-width: 620px;
-        margin: 9px 0;
-        font-size: clamp(1.35rem, 3vw, 2rem);
-        font-weight: 700;
-        letter-spacing: -0.035em;
+        margin: 10px 0;
+        font-size: clamp(1.4rem, 3vw, 2.1rem);
+        font-weight: 750;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
     }
 
-    .welcome-card p {
-        max-width: 600px;
-        margin: 0;
-        color: rgba(255, 255, 255, 0.8);
-    }
+    .welcome-card p { max-width: 600px; margin: 0; color: rgba(255, 255, 255, 0.82); }
 
-    .welcome-card > svg {
-        flex: 0 0 auto;
-        opacity: 0.72;
-    }
+    .welcome-card > svg { position: relative; z-index: 1; flex: 0 0 auto; opacity: 0.8; }
 
-    .welcome-kicker {
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 0.13em;
-        opacity: 0.75;
-    }
+    .welcome-kicker { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; opacity: 0.8; }
 
-    .stats-error {
-        color: #b42318;
-        font-size: 0.88rem;
-    }
+    .stats-error { color: var(--color-danger); font-size: 0.88rem; margin-top: 14px; }
 
     @media (max-width: 900px) {
-        .stats {
-            grid-template-columns: 1fr;
-        }
-
-        .welcome-card > svg {
-            display: none;
-        }
+        .stats { grid-template-columns: 1fr; }
+        .welcome-card > svg { display: none; }
     }
 </style>

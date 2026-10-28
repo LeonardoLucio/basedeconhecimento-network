@@ -37,8 +37,9 @@ export default {
 <style>
 .category-tree-node ul {
     list-style: none;
-    padding-left: 14px;
-    margin: 3px 0;
+    padding-left: 16px;
+    margin: 2px 0 2px 10px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .category-tree-link {
@@ -49,7 +50,7 @@ export default {
     border: 0;
     padding: 9px 10px;
     background: transparent;
-    color: #d0d5dd;
+    color: #cbd2e3;
     text-align: left;
     border-radius: 9px;
     font-size: 0.88rem;
@@ -57,18 +58,16 @@ export default {
     transition: background-color 140ms ease, color 140ms ease;
 }
 
+.category-tree-link svg { flex: 0 0 auto; color: #8d97b3; }
+
 .category-tree-link:hover,
-.category-tree-link:focus {
+.category-tree-link:focus-visible {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
 }
 
-.category-tree-link:disabled {
-    color: #98a2b3;
-    cursor: default;
-}
+.category-tree-link:hover svg { color: #b9b9f7; }
 
-.category-tree-link:disabled:hover {
-    background: transparent;
-}
+.category-tree-link:disabled { color: #7d87a3; cursor: default; }
+.category-tree-link:disabled:hover { background: transparent; }
 </style>

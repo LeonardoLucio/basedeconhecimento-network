@@ -62,5 +62,4 @@ export default {
 
 <style>
 .auth-card { min-width: min(100%, 440px); }
-.auth-brand img { width:28px; height:28px; }
 </style>

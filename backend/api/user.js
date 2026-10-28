@@ -1,30 +1,54 @@
-﻿const bcrypt = require('bcryptjs')
+const bcrypt = require('bcryptjs')
 
 module.exports = app => {
     const { existsOrError, notExistsOrError, equalsOrError } = app.api.validation
+
+    const MIN_PASSWORD_LENGTH = 12
+    const MAX_PASSWORD_LENGTH = 128
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
     const encryptPassword = password => bcrypt.hashSync(password, bcrypt.genSaltSync(12))
 
     const save = async (req, res) => {
         const user = {
-            name: req.body.name,
-            email: req.body.email,
+            name: typeof req.body.name === 'string' ? req.body.name.trim() : req.body.name,
+            email: typeof req.body.email === 'string' ? req.body.email.trim() : req.body.email,
             admin: Boolean(req.user?.admin && req.body.admin === true)
         }
-        if (req.params.id) user.id = req.params.id
+        if (req.params.id) user.id = Number(req.params.id)
         const categoryIds = Array.isArray(req.body.categoryIds)
             ? [...new Set(req.body.categoryIds.map(Number))]
             : []
 
         try {
+            if (req.params.id && (!Number.isInteger(user.id) || user.id <= 0)) {
+                throw 'Usuário inválido.'
+            }
             existsOrError(user.name, 'Nome não informado')
             existsOrError(user.email, 'E-mail não informado')
+            if (typeof user.name !== 'string' || user.name.length > 255) {
+                throw 'O nome deve ter no máximo 255 caracteres.'
+            }
+            if (typeof user.email !== 'string' || user.email.length > 255 || !emailPattern.test(user.email)) {
+                throw 'E-mail inválido.'
+            }
             if (!user.id || req.body.password) {
                 const password = req.body.password
                 existsOrError(password, 'Senha não informada')
+                if (typeof password !== 'string' ||
+                    Array.from(password).length < MIN_PASSWORD_LENGTH ||
+                    password.length > MAX_PASSWORD_LENGTH) {
+                    throw `A senha deve ter entre ${MIN_PASSWORD_LENGTH} e ${MAX_PASSWORD_LENGTH} caracteres.`
+                }
                 existsOrError(req.body.confirmPassword, 'Confirmação de Senha inválida')
                 equalsOrError(password, req.body.confirmPassword, 'Senhas não conferem')
                 user.password = encryptPassword(password)
+                // Senha definida por um administrador é temporária.
+                user.mustChangePassword = true
+            }
+
+            if (user.id && String(user.id) === String(req.user.id) && !user.admin) {
+                throw 'Você não pode remover o seu próprio acesso de administrador.'
             }
 
             const duplicateEmail = await app.db('users')
@@ -47,6 +71,10 @@ module.exports = app => {
                 )
             }
         } catch(msg) {
+            if (typeof msg !== 'string') {
+                console.error('Falha ao validar usuário:', msg)
+                return res.status(500).send('Não foi possível salvar o usuário.')
+            }
             return res.status(400).send(msg)
         }
 
@@ -81,16 +109,22 @@ module.exports = app => {
         }
     }
 
-    const get = (req, res) => {
-        app.db('users')
-            .select('id', 'name', 'email', 'admin')
-            .whereNull('deletedAt')
-            .then(users => res.json(users))
-            .catch(err => res.status(500).send(err))
+    const get = async (req, res) => {
+        try {
+            const users = await app.db('users')
+                .select('id', 'name', 'email', 'admin')
+                .whereNull('deletedAt')
+                .orderBy('name')
+            res.json(users)
+        } catch (error) {
+            console.error('Falha ao listar usuários:', error)
+            res.status(500).send('Não foi possível listar os usuários.')
+        }
     }
 
     const getById = async (req, res) => {
         try {
+            if (!/^\d+$/.test(req.params.id)) return res.status(404).send('Usuário não encontrado.')
             const user = await app.db('users')
             .select('id', 'name', 'email', 'admin')
             .where({ id: req.params.id })
@@ -111,6 +145,10 @@ module.exports = app => {
 
     const remove = async (req, res) => {
         try {
+            if (!/^\d+$/.test(req.params.id)) throw 'Usuário inválido.'
+            if (String(req.params.id) === String(req.user.id)) {
+                throw 'Você não pode excluir a própria conta.'
+            }
             const articles = await app.db('articles')
                 .where({ userId: req.params.id })
             notExistsOrError(articles, 'Usuário possui artigos.')
@@ -123,6 +161,10 @@ module.exports = app => {
 
             res.status(204).send()
         } catch(msg) {
+            if (typeof msg !== 'string') {
+                console.error('Falha ao excluir usuário:', msg)
+                return res.status(500).send('Não foi possível excluir o usuário.')
+            }
             res.status(400).send(msg)
         }
     }

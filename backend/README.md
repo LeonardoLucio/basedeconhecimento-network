@@ -25,6 +25,26 @@ No PowerShell:
 Copy-Item backend\env_file backend\.env
 ```
 
+No arquivo `backend/.env`, configure também `bootstrapAdminEmail` e `bootstrapAdminPassword` para criar o primeiro administrador. A senha temporária deve ter no mínimo 16 caracteres. Por exemplo:
+
+```js
+module.exports = {
+    authSecret: 'seu-segredo-de-autenticacao',
+    bootstrapAdminName: 'Admin',
+    bootstrapAdminEmail: 'seu-email@exemplo.com',
+    bootstrapAdminPassword: 'uma-senha-temporaria-com-16-caracteres-ou-mais',
+    db: {
+        host: '127.0.0.1',
+        port: 5432,
+        database: 'knowledge',
+        user: 'knowledge',
+        password: 'knowledge_dev'
+    }
+}
+```
+
+A conta será criada apenas se ainda não existir um administrador, e será solicitado que a senha seja alterada no primeiro acesso.
+
 ## Execução
 
 ```sh

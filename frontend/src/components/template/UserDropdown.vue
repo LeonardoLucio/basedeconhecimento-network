@@ -46,29 +46,27 @@ export default {
 </script>
 
 <style>
-    .user-dropdown {
-        position: relative;
-    }
+    .user-dropdown { position: relative; }
 
     .user-button {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 5px 8px 5px 12px;
+        padding: 5px 9px 5px 13px;
         color: #344054;
-        border-radius: 12px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        box-shadow: var(--shadow-sm);
         cursor: pointer;
         list-style: none;
+        transition: border-color 140ms ease;
     }
 
-    .user-button::-webkit-details-marker {
-        display: none;
-    }
+    .user-button::-webkit-details-marker { display: none; }
 
     .user-button:hover,
-    .user-dropdown[open] .user-button {
-        background: #f4f6fb;
-    }
+    .user-dropdown[open] .user-button { border-color: #c9c9f3; }
 
     .user-name {
         max-width: 180px;
@@ -80,28 +78,28 @@ export default {
     }
 
     .user-avatar {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
         display: grid;
         place-items: center;
-        color: var(--color-primary);
-        background: #e9ecff;
+        color: #fff;
+        background: linear-gradient(135deg, #7272ec, #4747c2);
         border-radius: 50%;
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         font-weight: 700;
     }
 
     .user-dropdown-content {
         position: absolute;
-        top: calc(100% + 8px);
+        top: calc(100% + 10px);
         right: 0;
         z-index: 40;
-        min-width: 190px;
+        min-width: 200px;
         padding: 6px;
-        background: #fff;
+        background: var(--color-surface);
         border: 1px solid var(--color-border);
-        border-radius: 12px;
-        box-shadow: 0 12px 28px rgba(16, 24, 40, 0.14);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-md);
     }
 
     .user-dropdown-content a,
@@ -110,25 +108,22 @@ export default {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px;
+        padding: 10px 12px;
         color: #344054;
         background: transparent;
         border: 0;
-        border-radius: 8px;
+        border-radius: 9px;
         text-align: left;
         text-decoration: none;
         font-size: 0.87rem;
+        font-weight: 500;
     }
 
     .user-dropdown-content a:hover,
     .user-dropdown-content button:hover {
-        color: #172033;
-        background: #f4f6fb;
+        color: var(--color-primary-dark);
+        background: var(--color-primary-soft);
     }
 
-    @media (max-width: 520px) {
-        .user-name {
-            display: none;
-        }
-    }
+    @media (max-width: 520px) { .user-name { display: none; } .user-button { padding-left: 6px; } }
 </style>

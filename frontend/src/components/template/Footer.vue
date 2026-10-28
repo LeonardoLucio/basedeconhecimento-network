@@ -14,8 +14,7 @@ export default {
     .footer {
         grid-area: footer;
         min-height: 54px;
-        color: #667085;
-        background: #fff;
+        color: var(--color-muted);
         border-top: 1px solid var(--color-border);
         display: flex;
         align-items: center;

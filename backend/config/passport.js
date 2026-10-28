@@ -6,6 +6,7 @@ const { Strategy, ExtractJwt } = passportJwt
 module.exports = app => {
     const params = {
         secretOrKey: authSecret,
+        algorithms: ['HS256'],
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken()
     }
 

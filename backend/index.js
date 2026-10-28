@@ -18,6 +18,14 @@ const start = async () => {
     await db.migrate.latest()
     await ensureBootstrapAdmin()
     require('./schedule/statsSchedule')(app)
+    // Último recurso: nunca devolve detalhes internos ao cliente.
+    app.use((error, _req, res, next) => {
+        if (res.headersSent) return next(error)
+        if (error.type === 'entity.too.large') return res.status(413).send('O conteúdo enviado é grande demais.')
+        if (error.type === 'entity.parse.failed') return res.status(400).send('Requisição inválida.')
+        console.error('Erro não tratado:', error)
+        return res.status(500).send('Erro interno do servidor.')
+    })
     app.listen(4000, () => {
         console.log('Backend executando...')
     })

@@ -19,30 +19,29 @@ export default {
     .page-title {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 16px;
         margin-bottom: 28px;
     }
 
     .page-title-icon {
-        width: 48px;
-        height: 48px;
+        width: 50px;
+        height: 50px;
         flex: 0 0 auto;
         display: grid;
         place-items: center;
-        color: var(--color-primary);
-        background: #e9ecff;
-        border-radius: 14px;
+        color: #fff;
+        background: linear-gradient(135deg, #7272ec, #4747c2);
+        border-radius: 15px;
+        box-shadow: 0 8px 18px rgba(91, 91, 214, 0.3);
     }
 
-    .page-title-copy {
-        min-width: 0;
-    }
+    .page-title-copy { min-width: 0; }
 
     .page-title h1 {
         margin: 0;
-        color: #172033;
-        font-size: clamp(1.45rem, 2vw, 1.85rem);
-        font-weight: 700;
+        color: var(--color-ink);
+        font-size: clamp(1.45rem, 2vw, 1.9rem);
+        font-weight: 750;
         letter-spacing: -0.035em;
         overflow-wrap: anywhere;
     }
@@ -50,6 +49,7 @@ export default {
     .page-title-subtitle {
         margin: 0 0 3px;
         color: var(--color-muted);
-        font-size: 0.88rem;
+        font-size: 0.86rem;
+        font-weight: 500;
     }
 </style>

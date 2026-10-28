@@ -5,7 +5,7 @@
         </div>
         <div class="stat-info">
             <span class="stat-title">{{ title }}</span>
-            <span class="stat-value">{{ value }}</span>
+            <span class="stat-value">{{ displayValue }}</span>
         </div>
     </div>
 </template>
@@ -33,39 +33,36 @@ export default {
         display: flex;
         align-items: center;
         gap: 16px;
-        border-radius: 16px;
-        background: #fff;
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
         padding: 22px;
         border: 1px solid var(--color-border);
-        box-shadow: 0 4px 14px rgba(16, 24, 40, 0.04);
+        box-shadow: var(--shadow-sm);
+        transition: transform 160ms ease, box-shadow 160ms ease;
     }
 
+    .stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
     .stat-icon {
-        width: 50px;
-        height: 50px;
+        width: 52px;
+        height: 52px;
         flex: 0 0 auto;
         display: grid;
         place-items: center;
-        background: #f4f6fb;
-        border-radius: 14px;
+        background: var(--color-surface-alt);
+        border: 1px solid var(--color-border);
+        border-radius: 15px;
     }
 
-    .stat-info {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    }
+    .stat-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
-    .stat-title {
-        color: var(--color-muted);
-        font-size: 0.84rem;
-    }
+    .stat-title { color: var(--color-muted); font-size: 0.84rem; font-weight: 500; }
 
     .stat-value {
-        color: #172033;
-        font-size: 1.8rem;
-        font-weight: 700;
+        color: var(--color-ink);
+        font-size: 1.9rem;
+        font-weight: 750;
         letter-spacing: -0.04em;
+        line-height: 1.1;
     }
 </style>

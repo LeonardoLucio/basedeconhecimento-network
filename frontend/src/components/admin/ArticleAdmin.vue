@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <div class="article-admin">
         <div v-if="pendingDelete" class="admin-confirm-backdrop" @click.self="pendingDelete = null">
             <section class="admin-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-article-title">
@@ -8,7 +8,7 @@
                     <button class="btn btn-danger" type="button" @click="remove(pendingDelete)">Excluir artigo</button></div>
             </section>
         </div>
-        <form @submit.prevent="save">
+        <form @submit.prevent="save" @keydown.ctrl.s.prevent="save" @keydown.meta.s.prevent="save">
             <div class="admin-form-heading">
                 <div>
                     <h3>{{ article.id ? 'Editar artigo' : 'Novo artigo' }}</h3>
@@ -57,13 +57,33 @@
                 </select>
             </div>
             <div v-if="mode === 'save'" class="mb-3">
-                <label class="form-label">Conteúdo <span class="required-mark">*</span></label>
-                <QuillEditor v-model:content="article.content"
-                    content-type="html"
-                    :toolbar="editorToolbar"
-                    placeholder="Informe o Conteúdo do Artigo..."
-                    @ready="setEditor"
-                    @selection-change="rememberSelection" />
+                <div class="editor-label-row">
+                    <label class="form-label mb-0">Conteúdo <span class="required-mark">*</span></label>
+                    <button class="btn btn-sm btn-outline-primary" type="button"
+                        :disabled="!editor" @click="insertCommandBlock">
+                        <Terminal :size="15" /> Bloco de comandos
+                    </button>
+                </div>
+                <div class="editor-shell">
+                    <QuillEditor v-model:content="article.content"
+                        content-type="html"
+                        :toolbar="editorToolbar"
+                        placeholder="Escreva o conteúdo do artigo. Para comandos e scripts, use o botão “Bloco de comandos”..."
+                        @ready="setEditor"
+                        @text-change="onTextChange"
+                        @selection-change="rememberSelection" />
+                    <div class="editor-statusbar" aria-live="polite">
+                        <span>{{ editorStats.words }} palavras · {{ editorStats.chars }} caracteres</span>
+                        <span :class="['editor-dirty', { 'is-dirty': dirty }]">
+                            {{ dirty ? 'Alterações não salvas' : 'Tudo salvo' }}
+                        </span>
+                        <span class="editor-hint">Ctrl + S para salvar</span>
+                    </div>
+                </div>
+                <small class="editor-tip">
+                    Dica: cole comandos (inclusive com <code>&amp;&amp;</code> e <code>\</code>) dentro de um
+                    bloco de comandos — eles são salvos exatamente como digitados e nunca são executados.
+                </small>
             </div>
             <div v-if="mode === 'save'" class="attachment-panel">
                 <div>
@@ -140,13 +160,13 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { baseApiUrl, showError } from '@/global'
 import axios from 'axios'
-import { FileText, FileUp, Pencil, Trash2 } from '@lucide/vue'
+import { FileText, FileUp, Pencil, Terminal, Trash2 } from '@lucide/vue'
 import { markRaw } from 'vue'
 import { getProtectedArticleImageUrl } from '@/utils/articleImages'
 
 export default {
     name: 'ArticleAdmin',
-    components: { QuillEditor, FileText, FileUp, Pencil, Trash2 },
+    components: { QuillEditor, FileText, FileUp, Pencil, Terminal, Trash2 },
     data: function() {
         return {
             mode: 'save',
@@ -164,12 +184,17 @@ export default {
             imagePreviews: [],
             pendingDelete: null,
             pendingFileImported: false,
+            dirty: false,
+            editorStats: { words: 0, chars: 0 },
             editorToolbar: [
+                [{ header: [1, 2, 3, false] }, { size: ['small', false, 'large', 'huge'] }],
                 ['bold', 'italic', 'underline', 'strike'],
-                [{ header: [1, 2, 3, false] }],
-                [{ size: ['small', false, 'large', 'huge'] }],
-                [{ list: 'ordered' }, { list: 'bullet' }],
-                ['blockquote', 'code-block'], ['link', 'image'], ['clean']
+                [{ color: [] }, { background: [] }],
+                [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
+                [{ align: [] }],
+                ['blockquote', 'code-block'],
+                ['link', 'image'],
+                ['clean']
             ]
         }
     },
@@ -190,6 +215,8 @@ export default {
         reset() {
             this.mode = 'save'
             this.article = {}
+            this.dirty = false
+            this.editorStats = { words: 0, chars: 0 }
             this.pendingFile = null
             this.pendingFileImported = false
             this.releaseImagePreviews()
@@ -219,6 +246,7 @@ export default {
                     this.article.id = res.data.id
                     this.article.attachments = []
                 }
+                this.dirty = false
                 this.loadArticles()
                 if (this.pendingFile) {
                     const file = this.pendingFile
@@ -238,6 +266,29 @@ export default {
         },
         setEditor(editor) {
             this.editor = markRaw(editor)
+            this.updateEditorStats()
+        },
+        onTextChange(change) {
+            this.updateEditorStats()
+            if (change?.source === 'user') this.dirty = true
+        },
+        updateEditorStats() {
+            const text = (this.editor?.getText() || '').trim()
+            this.editorStats = {
+                words: text ? text.split(/\s+/).length : 0,
+                chars: text.length
+            }
+        },
+        insertCommandBlock() {
+            if (!this.editor) return
+            const range = this.editor.getSelection(true)
+            this.editor.formatLine(range.index, Math.max(range.length, 1), 'code-block', true, 'user')
+            this.editor.focus()
+        },
+        warnBeforeLeaving(event) {
+            if (!this.dirty) return
+            event.preventDefault()
+            event.returnValue = ''
         },
         rememberSelection(range) {
             if (range) this.lastSelection = { index: range.index, length: range.length }
@@ -303,6 +354,7 @@ export default {
                     content: this.restoreImageUrls(this.editor.root.innerHTML)
                 }
                 await axios.put(`${baseApiUrl}/articles/${this.article.id}`, articleToSave)
+                this.dirty = false
                 this.$toasted.global.defaultSuccess({
                     msg: data.images?.length && data.text
                         ? `Texto e ${data.images.length} imagem(ns) importados no Conteúdo.`
@@ -427,6 +479,7 @@ export default {
                     const loadedArticle = { ...res.data }
                     loadedArticle.content = await this.prepareContentImages(loadedArticle.content)
                     this.article = loadedArticle
+                    this.dirty = false
                 })
                 .catch(showError)
         },
@@ -453,144 +506,147 @@ export default {
         }
     },
     mounted() {
+        window.addEventListener('beforeunload', this.warnBeforeLeaving)
         this.loadUsers()
         this.loadCategories()
         this.loadArticles()
     },
     beforeUnmount() {
+        window.removeEventListener('beforeunload', this.warnBeforeLeaving)
         this.releaseImagePreviews()
     }
 }
 </script>
 
 <style>
-    .editor-actions {
+    .article-required-note { margin-bottom: 18px; color: var(--color-muted); font-size: 0.86rem; }
+    .required-mark { color: var(--color-danger); font-weight: 800; }
+
+    .editor-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         margin-bottom: 8px;
     }
 
-    .ql-editor pre.ql-syntax {
-        color: #f8fafc;
-        background: #090d14;
-        border: 1px solid #263244;
-        border-radius: 8px;
+    .editor-shell {
+        border: 1px solid #d5d9e5;
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+        transition: border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .editor-shell:focus-within {
+        border-color: #8f8fe8;
+        box-shadow: 0 0 0 4px rgba(91, 91, 214, 0.14);
+    }
+
+    .editor-shell .ql-toolbar.ql-snow {
+        position: sticky;
+        top: var(--header-height);
+        z-index: 6;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 6px;
+        padding: 8px 10px;
+        border: 0;
+        border-bottom: 1px solid var(--color-border);
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        background: rgba(248, 249, 253, 0.96);
+        backdrop-filter: blur(8px);
+    }
+
+    .editor-shell .ql-toolbar.ql-snow .ql-formats { margin-right: 6px; padding-right: 8px; border-right: 1px solid var(--color-border); }
+    .editor-shell .ql-toolbar.ql-snow .ql-formats:last-child { border-right: 0; }
+    .editor-shell .ql-toolbar button:hover .ql-stroke,
+    .editor-shell .ql-toolbar button.ql-active .ql-stroke { stroke: var(--color-primary); }
+    .editor-shell .ql-toolbar button:hover .ql-fill,
+    .editor-shell .ql-toolbar button.ql-active .ql-fill { fill: var(--color-primary); }
+    .editor-shell .ql-toolbar .ql-picker-label:hover,
+    .editor-shell .ql-toolbar .ql-picker-label.ql-active { color: var(--color-primary); }
+
+    .editor-shell .ql-container.ql-snow { border: 0; font-family: inherit; font-size: 1rem; }
+
+    .editor-shell .ql-editor {
+        min-height: 380px;
+        max-height: 70vh;
+        padding: 20px 24px;
+        line-height: 1.75;
+        overflow-wrap: anywhere;
+    }
+
+    .editor-shell .ql-editor.ql-blank::before { color: #98a2b3; font-style: normal; left: 24px; }
+
+    .editor-shell .ql-editor img { max-width: 100%; border-radius: 8px; }
+    .editor-shell .ql-editor blockquote { border-left: 4px solid #c9c9f3; color: #475467; }
+
+    .ql-editor pre.ql-syntax,
+    .ql-editor .ql-code-block-container {
+        margin: 10px 0;
         padding: 14px 16px;
-        font-family: 'Cascadia Code', Consolas, monospace;
-        line-height: 1.6;
+        color: #e6e9f5;
+        background: #0d1222;
+        border: 1px solid #252d47;
+        border-radius: 10px;
+        font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+        font-size: 0.88rem;
+        line-height: 1.65;
+        overflow-x: auto;
     }
 
-    .article-required-note {
-        margin-bottom: 18px;
+    .ql-editor .ql-code-block { color: #e6e9f5; white-space: pre; }
+
+    .editor-statusbar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 9px 16px;
         color: var(--color-muted);
-        font-size: 0.86rem;
+        background: var(--color-surface-alt);
+        border-top: 1px solid var(--color-border);
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        font-size: 0.77rem;
     }
 
-    .required-mark { color:#c43232; font-weight:800; }
+    .editor-dirty::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--color-success); }
+    .editor-dirty.is-dirty { color: #b54708; }
+    .editor-dirty.is-dirty::before { background: #f79009; }
+    .editor-hint { margin-left: auto; }
 
-    .admin-form-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; padding:18px 20px; border:1px solid var(--color-border); border-radius:14px; background:linear-gradient(120deg,#f5f7ff,#fff); }
-    .admin-form-heading h3 { margin:0; color:#202b45; font-size:1.08rem; font-weight:700; }
-    .admin-form-heading p { margin:5px 0 0; color:var(--color-muted); font-size:.87rem; }
-    .admin-mode-badge { padding:6px 10px; border-radius:999px; color:var(--color-primary-dark); background:#e9edff; font-size:.78rem; font-weight:700; white-space:nowrap; }
-
-    .admin-confirm-backdrop { position:fixed; inset:0; z-index:1200; display:grid; place-items:center; padding:20px; background:rgba(16,24,40,.52); }
-    .admin-confirm-dialog { width:min(100%,440px); padding:24px; border:1px solid var(--color-border); border-radius:16px; background:#fff; box-shadow:0 24px 64px rgba(16,24,40,.24); }
-    .admin-confirm-dialog h3 { margin:0 0 8px; font-size:1.12rem; font-weight:700; }
-    .admin-confirm-dialog p { color:var(--color-muted); }
-    .admin-confirm-dialog > div { display:flex; justify-content:flex-end; gap:10px; }
-
-    .ql-editor .ql-code-block-container,
-    .ql-editor .ql-code-block { color:#f8fafc; background:#090d14; font-family:'Cascadia Code',Consolas,monospace; }
-    .ql-editor .ql-code-block-container { margin:8px 0; padding:12px 14px; border:1px solid #263244; border-radius:8px; }
-
-    .editor-actions small {
-        margin-left: 10px;
-        color: var(--color-muted);
-        font-size: 0.8rem;
-    }
+    .editor-tip { display: block; margin-top: 8px; color: var(--color-muted); font-size: 0.8rem; }
+    .editor-tip code { padding: 1px 5px; color: var(--color-primary-dark); background: var(--color-primary-soft); border-radius: 5px; }
 
     .editor-actions .btn,
     .attachment-panel .btn,
-    .file-picker {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-    }
+    .file-picker { display: inline-flex; align-items: center; gap: 7px; }
 
-    .file-picker {
-        position: relative;
-        overflow: hidden;
-        margin: 0;
-        cursor: pointer;
-    }
-
-    .file-picker.is-disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
-    }
-
-    .file-picker-input {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: inherit;
-    }
+    .file-picker { position: relative; overflow: hidden; margin: 0; cursor: pointer; }
+    .file-picker.is-disabled { opacity: 0.65; cursor: not-allowed; }
+    .file-picker-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: inherit; }
 
     .attachment-panel {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
         gap: 12px 18px;
-        margin: 20px 0;
-        padding: 16px;
-        background: #f8f9fc;
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
+        margin: 22px 0;
+        padding: 18px;
+        background: var(--color-surface-alt);
+        border: 1px dashed #cfd3e2;
+        border-radius: var(--radius-md);
     }
 
-    .attachment-panel p {
-        margin: 4px 0 0;
-        color: var(--color-muted);
-        font-size: 0.84rem;
-    }
-
-    .attachment-panel > small {
-        grid-column: 1 / -1;
-        color: var(--color-muted);
-    }
-
-    .attachment-list {
-        grid-column: 1 / -1;
-        display: grid;
-        gap: 8px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-
-    .attachment-list li {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-        color: #344054;
-        font-size: 0.86rem;
-    }
-
-    .attachment-list li span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .attachment-list li small {
-        margin-left: auto;
-        color: var(--color-muted);
-    }
+    .attachment-panel p { margin: 4px 0 0; color: var(--color-muted); font-size: 0.84rem; }
+    .attachment-panel > small { grid-column: 1 / -1; color: var(--color-muted); }
+    .attachment-list { grid-column: 1 / -1; display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .attachment-list li { display: flex; align-items: center; gap: 8px; min-width: 0; color: #344054; font-size: 0.86rem; }
+    .attachment-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .attachment-list li small { margin-left: auto; color: var(--color-muted); }
 
     @media (max-width: 575.98px) {
-        .attachment-panel {
-            grid-template-columns: 1fr;
-        }
+        .attachment-panel { grid-template-columns: 1fr; }
+        .editor-hint { display: none; }
+        .editor-shell .ql-editor { padding: 16px; }
     }
 </style>

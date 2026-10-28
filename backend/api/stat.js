@@ -8,8 +8,8 @@ module.exports = app => {
 
             return res.json(stat || { users: 0, categories: 0, articles: 0 })
         } catch (error) {
-            console.error('[Stats] Failed to load statistics:', error)
-            return res.status(500).send('Could not load statistics.')
+            console.error('[Stats] Falha ao carregar estatísticas:', error)
+            return res.status(500).send('Não foi possível carregar as estatísticas.')
         }
     }
 

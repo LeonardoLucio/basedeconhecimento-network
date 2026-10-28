@@ -48,50 +48,46 @@ export default {
         top: 0;
         z-index: 30;
         padding: 0 28px;
-        background: rgba(255, 255, 255, 0.94);
+        background: rgba(255, 255, 255, 0.82);
         border-bottom: 1px solid var(--color-border);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        backdrop-filter: blur(14px);
+        backdrop-filter: saturate(160%) blur(16px);
     }
 
     .brand {
         display: inline-flex;
         align-items: center;
         gap: 12px;
-        color: #172033;
+        margin-right: auto;
+        color: var(--color-ink);
         text-decoration: none;
     }
+
+    .brand:hover { color: var(--color-ink); }
 
     .brand-mark {
         width: 42px;
         height: 42px;
         display: grid;
         place-items: center;
-        color: white;
-        background: linear-gradient(135deg, #5869e8, #394ac2);
         border-radius: 13px;
-        box-shadow: 0 6px 14px rgba(66, 85, 212, 0.2);
+        box-shadow: 0 6px 16px rgba(91, 91, 214, 0.28);
     }
 
-    .brand-mark img { width:42px; height:42px; border-radius:13px; }
+    .brand-mark img { width: 42px; height: 42px; border-radius: 13px; }
 
-    .brand-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
+    .brand-copy { display: flex; flex-direction: column; gap: 2px; }
 
     .brand-copy strong {
-        font-size: 0.96rem;
+        font-size: 0.98rem;
+        font-weight: 700;
+        letter-spacing: -0.015em;
         line-height: 1.2;
     }
 
-    .brand-copy small {
-        color: var(--color-muted);
-        font-size: 0.74rem;
-    }
+    .brand-copy small { color: var(--color-muted); font-size: 0.74rem; }
 
     header.header > .toggle {
         width: 40px;
@@ -100,22 +96,17 @@ export default {
         place-items: center;
         margin-right: 14px;
         color: #475467;
-        background: #f4f6fb;
+        background: var(--color-surface);
         border: 1px solid var(--color-border);
         border-radius: 11px;
+        box-shadow: var(--shadow-sm);
+        transition: color 140ms ease, border-color 140ms ease;
     }
 
+    header.header > .toggle:hover { color: var(--color-primary); border-color: #c9c9f3; }
+
     @media (max-width: 767.98px) {
-        .header {
-            padding: 0 16px;
-        }
-
-        .brand {
-            margin-right: auto;
-        }
-
-        .brand-copy small {
-            display: none;
-        }
+        .header { padding: 0 16px; }
+        .brand-copy small { display: none; }
     }
 </style>

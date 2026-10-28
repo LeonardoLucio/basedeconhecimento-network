@@ -52,33 +52,58 @@ export default {
 
 <style>
     .admin-pages-tabs .nav-tabs {
-        gap: 8px;
-        padding: 6px;
-        background: #eaedf4;
+        display: inline-flex;
+        gap: 4px;
+        padding: 5px;
+        background: #e9ebf5;
         border: 0;
-        border-radius: 12px;
+        border-radius: 13px;
     }
 
     .admin-pages-tabs .nav-link {
-        padding: 9px 16px;
+        padding: 9px 20px;
         color: #667085;
         border: 0;
         border-radius: 9px;
         font-size: 0.88rem;
         font-weight: 600;
+        transition: color 140ms ease, background-color 140ms ease;
     }
 
+    .admin-pages-tabs .nav-link:hover { color: var(--color-ink); }
+
     .admin-pages-tabs .nav-link.active {
-        color: #172033;
-        background: #fff;
-        box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
+        color: var(--color-primary-dark);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-sm);
     }
 
     .admin-panel {
-        padding: clamp(16px, 3vw, 28px);
-        background: #fff;
+        padding: clamp(16px, 3vw, 30px);
+        background: var(--color-surface);
         border: 1px solid var(--color-border);
-        border-radius: 16px;
-        box-shadow: 0 4px 14px rgba(16, 24, 40, 0.04);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
     }
+
+    .admin-form-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 22px;
+        padding: 18px 22px;
+        border: 1px solid #dcdcf7;
+        border-radius: var(--radius-md);
+        background: linear-gradient(120deg, #f0f0ff, #ffffff 70%);
+    }
+    .admin-form-heading h3 { margin: 0; color: var(--color-ink); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .admin-form-heading p { margin: 5px 0 0; color: var(--color-muted); font-size: .87rem; }
+    .admin-mode-badge { padding: 6px 12px; border-radius: 999px; color: var(--color-primary-dark); background: var(--color-primary-soft); font-size: .78rem; font-weight: 700; white-space: nowrap; }
+
+    .admin-confirm-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 20px; background: rgba(16, 24, 40, .55); backdrop-filter: blur(3px); }
+    .admin-confirm-dialog { width: min(100%, 440px); padding: 26px; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); box-shadow: var(--shadow-lg); }
+    .admin-confirm-dialog h3 { margin: 0 0 8px; font-size: 1.15rem; font-weight: 700; }
+    .admin-confirm-dialog p { color: var(--color-muted); }
+    .admin-confirm-dialog > div { display: flex; justify-content: flex-end; gap: 10px; }
 </style>

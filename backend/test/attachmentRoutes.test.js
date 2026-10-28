@@ -17,7 +17,11 @@ test('registra a rota autenticada para servir imagens extraídas', () => {
                 getByCategory: noop
             },
             user: { save: noop, get: noop, getById: noop, remove: noop },
-            auth: { signin: noop, validateToken: noop },
+            auth: {
+                signin: noop, validateToken: noop, changePassword: noop,
+                loginLimiter: noop, passwordChangeLimiter: noop
+            },
+            categoryAccess: { authorizeCategory: noop, authorizeArticle: noop },
             category: { get: noop, save: noop, getTree: noop, getById: noop, remove: noop },
             stat: { get: noop }
         },
@@ -34,7 +38,8 @@ test('registra a rota autenticada para servir imagens extraídas', () => {
             registeredRoutes.push(route)
             return route
         },
-        post: noop
+        post: noop,
+        get: noop
     }
 
     configureRoutes(app)

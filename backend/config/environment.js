@@ -23,9 +23,9 @@ const config = {
         user: process.env.DB_USER || fileConfig.db.user,
         password: readSetting('DB_PASSWORD') || fileConfig.db.password
     },
-    bootstrapAdminName: process.env.BOOTSTRAP_ADMIN_NAME || 'Admin',
-    bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || '',
-    bootstrapAdminPassword: readSetting('BOOTSTRAP_ADMIN_PASSWORD') || ''
+    bootstrapAdminName: process.env.BOOTSTRAP_ADMIN_NAME || fileConfig.bootstrapAdminName || 'Admin',
+    bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || fileConfig.bootstrapAdminEmail || '',
+    bootstrapAdminPassword: readSetting('BOOTSTRAP_ADMIN_PASSWORD') || fileConfig.bootstrapAdminPassword || ''
 }
 
 if (!config.authSecret || !config.db || !config.db.database || !config.db.user) {
@@ -36,6 +36,10 @@ if (!config.authSecret || !config.db || !config.db.database || !config.db.user) 
 
 if (process.env.NODE_ENV === 'production' && config.authSecret.length < 32) {
     throw new Error('AUTH_SECRET deve ter pelo menos 32 caracteres em produção.')
+}
+
+if (process.env.NODE_ENV === 'production' && config.db.password === 'knowledge_dev') {
+    throw new Error('Defina uma senha própria para o PostgreSQL (DB_PASSWORD_FILE) em produção.')
 }
 
 module.exports = config

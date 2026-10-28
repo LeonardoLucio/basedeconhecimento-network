@@ -98,11 +98,7 @@ export default {
 </script>
 
 <style>
-    .articles-by-category ul {
-        list-style-type: none;
-        padding: 0;
-        margin: 0;
-    }
+    .articles-by-category ul { list-style-type: none; padding: 0; margin: 0; }
 
     .articles-by-category .load-more {
         display: flex;
@@ -112,10 +108,11 @@ export default {
     }
 
     .article-list-state {
-        padding: 24px;
+        padding: 28px;
         color: var(--color-muted);
-        background: #fff;
-        border: 1px solid var(--color-border);
-        border-radius: 14px;
+        text-align: center;
+        background: var(--color-surface);
+        border: 1px dashed #cfd3e2;
+        border-radius: var(--radius-md);
     }
 </style>

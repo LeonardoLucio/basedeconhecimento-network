@@ -2,12 +2,12 @@ const admin = require('./admin')
 
 module.exports = app => {
     app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }))
-    app.post('/signin', app.api.auth.signin)
+    app.post('/signin', app.api.auth.loginLimiter, app.api.auth.signin)
     app.post('/validateToken', app.api.auth.validateToken)
 
     app.route('/account/change-password')
         .all(app.config.passport.authenticate({ allowPasswordChange: true }))
-        .post(app.api.auth.changePassword)
+        .post(app.api.auth.passwordChangeLimiter, app.api.auth.changePassword)
 
     app.route('/users')
         .all(app.config.passport.authenticate())

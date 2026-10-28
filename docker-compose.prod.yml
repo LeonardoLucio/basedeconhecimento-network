@@ -22,6 +22,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       AUTH_SECRET_FILE: /run/secrets/auth_secret
       DB_HOST: postgres
       DB_PORT: 5432
@@ -35,6 +36,10 @@ services:
       - auth_secret
       - postgres_password
       - bootstrap_admin_password
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - article_uploads:/app/uploads
     depends_on:

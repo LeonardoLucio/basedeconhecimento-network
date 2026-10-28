@@ -59,3 +59,21 @@ Por padrão, o frontend fica vinculado a `0.0.0.0`, aceitando conexões em todas
 Para acesso pela internet, configure um proxy reverso HTTPS, como Caddy ou Nginx. Não publique a porta do PostgreSQL na internet.
 
 Para atualizar, mantenha `.env.production`, os arquivos de `secrets/` e os volumes; depois execute novamente o comando `up -d --build`. Faça backups regulares do PostgreSQL e do volume `article_uploads`. Os arquivos em `secrets/` ficam no host e devem ser protegidos também nos backups.
+
+## 5. Atualizando de uma versão anterior (importante)
+
+Esta versão inclui a migração `convert_article_content_to_text`, que converte a coluna `articles.content` de `bytea` para `text`. Isso corrige o erro `invalid input syntax for type bytea` ao salvar artigos com barra invertida (`\`), como comandos com continuação de linha. A migração roda sozinha quando o backend inicia, mas **faça um backup antes**:
+
+```sh
+sudo docker compose --env-file .env.production -f docker-compose.prod.yml exec postgres \
+  pg_dump -U knowledge knowledge > backup-$(date +%F).sql
+```
+
+## 6. Medidas de segurança incluídas
+
+- Limite de tentativas de login (10 falhas a cada 15 minutos por IP) e resposta genérica para e-mail ou senha inválidos.
+- Cabeçalhos de segurança no backend (Helmet) e no Nginx (CSP, X-Frame-Options, nosniff, Referrer-Policy).
+- CORS desativado por padrão; defina `CORS_ORIGINS` apenas se precisar acessar a API de outro domínio.
+- Senhas definidas por administradores exigem 12 a 128 caracteres e forçam troca no próximo acesso.
+- O token de sessão expira em 24 horas.
+- Conteúdo dos artigos sanitizado no servidor e no navegador; comandos são tratados apenas como texto.

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <div class="user-admin">
         <div v-if="pendingDelete" class="admin-confirm-backdrop" @click.self="pendingDelete = null">
             <section class="admin-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-user-title">
@@ -219,7 +219,6 @@ export default {
 </script>
 
 <style>
-.admin-form-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;padding:18px 20px;border:1px solid var(--color-border);border-radius:14px;background:linear-gradient(120deg,#f5f7ff,#fff)}.admin-form-heading h3{margin:0;color:#202b45;font-size:1.08rem;font-weight:700}.admin-form-heading p{margin:5px 0 0;color:var(--color-muted);font-size:.87rem}.admin-mode-badge{padding:6px 10px;border-radius:999px;color:var(--color-primary-dark);background:#e9edff;font-size:.78rem;font-weight:700;white-space:nowrap}.admin-confirm-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(16,24,40,.52)}.admin-confirm-dialog{width:min(100%,440px);padding:24px;border:1px solid var(--color-border);border-radius:16px;background:#fff;box-shadow:0 24px 64px rgba(16,24,40,.24)}.admin-confirm-dialog h3{margin:0 0 8px;font-size:1.12rem;font-weight:700}.admin-confirm-dialog p{color:var(--color-muted)}
 .category-access-panel{margin:18px 0 22px;padding:18px;border:1px solid var(--color-border);border-radius:12px;background:#f8f9fc}.category-access-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}.category-access-heading h4{margin:0;color:#202b45;font-size:.96rem;font-weight:700}.category-access-heading p{margin:4px 0 0;color:var(--color-muted);font-size:.82rem}.category-access-actions{display:flex;gap:8px;flex-wrap:wrap}.category-access-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:6px;max-height:250px;overflow:auto;padding:4px}.category-access-option{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border:1px solid transparent;border-radius:8px;background:#fff;font-size:.84rem;cursor:pointer}.category-access-option:hover{border-color:#c7cffb;background:#f5f6ff}.category-access-option .form-check-input{flex:none;margin-top:3px}.category-access-empty,.category-access-warning{display:block;margin:10px 0 0;color:#8a4b12;font-size:.8rem}
 @media(max-width:575.98px){.category-access-heading{flex-direction:column}}
 </style>
